@@ -1,28 +1,48 @@
 from pathlib import Path
-
+from PIL import Image
 import typer
 from loguru import logger
 from tqdm import tqdm
 
-from photomacros.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from config import PROCESSED_DATA_DIR, RAW_DATA_DIR
 
 app = typer.Typer()
 
 
 @app.command()
 def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "dataset.csv",
-    output_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
-    # ----------------------------------------------
+    input_dir: Path = '/Users/osmarg/Documents/GitHub/photomacros/photomacros/data/raw/food-101/images'   # Directory with raw images
+    output_dir: Path = '/Users/osmarg/Documents/GitHub/photomacros/photomacros/data/processed/'  # Directory to save processed images
 ):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Processing dataset...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
+    """
+    Process all .jpg images from the input directory and save to the output directory.
+    """
+    # Ensure output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Get all .jpg files in the input directory
+    image_paths = list(input_dir.glob("*.jpg"))
+
+    logger.info(f"Found {len(image_paths)} .jpg files to process.")
+
+    # Loop through each image in the input directory
+    for img_path in tqdm(image_paths, total=len(image_paths), desc="Processing images"):
+        try:
+            # Open the image
+            with Image.open(img_path) as img:
+                # Example: Resize the image to 256x256 and save it
+                img_resized = img.resize((256, 256))
+                
+                # Create a new file path in the output directory
+                output_path = output_dir / img_path.name
+                
+                # Save the resized image
+                img_resized.save(output_path)
+                logger.info(f"Processed and saved {output_path}")
+        except Exception as e:
+            logger.error(f"Failed to process {img_path}: {e}")
+
+    logger.success("All images processed successfully.")
 
 
 if __name__ == "__main__":
