@@ -11,8 +11,8 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    input_dir: Path = '/Users/osmarg/Documents/GitHub/photomacros/photomacros/data/raw/food-101/images'   # Directory with raw images
-    output_dir: Path = '/Users/osmarg/Documents/GitHub/photomacros/photomacros/data/processed/'  # Directory to save processed images
+    input_dir: Path = '~/Documents/GitHub/photomacros/photomacros/data/raw/food101/images/',   # Directory with raw images
+    output_dir: Path = '~/Documents/GitHub/photomacros/photomacros/data/processed/' # Directory to save processed images
 ):
     """
     Process all .jpg images from the input directory and save to the output directory.
@@ -21,7 +21,8 @@ def main(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get all .jpg files in the input directory
-    image_paths = list(input_dir.glob("*.jpg"))
+    image_paths = list(input_dir.rglob("*.jpg"))
+    print (input_dir.glob("*.jpg"))
 
     logger.info(f"Found {len(image_paths)} .jpg files to process.")
 
