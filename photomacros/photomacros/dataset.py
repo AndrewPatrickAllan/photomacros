@@ -5,15 +5,16 @@ from loguru import logger
 from tqdm import tqdm
 import os 
 
-from config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from photomacros.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
 
 app = typer.Typer()
 
 
 @app.command()
 def main(
-    input_dir: Path = os.path.expanduser('~/Documents/GitHub/photomacros/photomacros/data/raw/food101/images/'),   # Directory with raw images
-    output_dir: Path = os.path.expanduser('~/Documents/GitHub/photomacros/photomacros/data/processed/') # Directory to save processed images
+    input_dir: Path =  RAW_DATA_DIR /"food101/images/",   # Directory with raw images
+    output_dir: Path = PROCESSED_DATA_DIR # Directory to save processed images
+
 ):
     """
     Process all .jpg images from the input directory and save to the output directory.
