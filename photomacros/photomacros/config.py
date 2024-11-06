@@ -15,11 +15,15 @@ RAW_DATA_DIR = DATA_DIR / "raw"
 INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
-
 MODELS_DIR = PROJ_ROOT / "models"
-
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+
+IMAGE_SIZE = 224  # Standard image size for models
+MEAN = [0.485, 0.456, 0.406]  # Mean values for normalization
+STD = [0.229, 0.224, 0.225]  # Standard deviation values for normalization
+BATCH_SIZE = 32  # Number of samples in each batch
+
 
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
