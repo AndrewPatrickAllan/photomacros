@@ -21,6 +21,8 @@ import random
 app = typer.Typer()
 
 
+
+
 # Set random seed for reproducibility
 random.seed(46)
 
@@ -49,23 +51,46 @@ def get_validation_transforms():
 
 # STEP 1 - Splits data into 70% training, 15% validation, 15% testing
 def split_data(input_path):
-    image_paths = list(Path(input_path).rglob("*.jpg"))  # Get all image paths
-    dataset_size = len(image_paths)
-    train_size = int(0.7 * dataset_size)
-    val_size = int(0.15 * dataset_size)   # 15% for validation
-    test_size = dataset_size - train_size - val_size  # Remaining 15% for testing
     
+ 
+    image_paths = []
+    labels = []
+
+    # Traverse the directory
+    for label_dir in input_path.iterdir():
+        if label_dir.is_dir():  # Check if it's a directory (class label)
+            for img_file in label_dir.glob("*.jpg"):  # Load all jpg images
+                image_paths.append(img_file)
+                labels.append(label_dir.name)  # Use the directory name as the label
+               
+
+    logger.info(f"Loaded {len(image_paths)} images with corresponding labels.")
+    logger.info("Generating train, val, and test datasets...")
+
+    dataset_size = len(image_paths)
+
+    # Combine images and labels for easy splitting
+    dataset = list(zip(image_paths, labels))
+    
+
+    # Split the dataset into train, validation, and test sizes
+    train_size = int(0.7 * dataset_size)
+    val_size = int(0.15 * dataset_size)  # 15% for validation
+    test_size = dataset_size - train_size - val_size  # Remaining 15% for testing
+
     # Randomly split datasets
-    train_dataset, val_dataset, test_dataset = random_split(image_paths, [train_size, val_size, test_size])
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
     return train_dataset, val_dataset, test_dataset
+  
+  
 
 
 # Load datasets and create DataLoaders
 def load_data(input_data_dir):
     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
 
-    # STEP 2 - Create DataLoaders with augmentations
+    # STEP 3 - Create DataLoaders with augmentations
     train_loader = DataLoader(
         datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
         batch_size=BATCH_SIZE, 
@@ -86,6 +111,8 @@ def load_data(input_data_dir):
         sampler=test_dataset,
         shuffle=False  # Avoid shuffling as we're using a sampler
     )
+    
+    logger.success("Train, validation, and test datasets generation complete with labels.")
 
     return train_loader, val_loader, test_loader
 
@@ -110,6 +137,7 @@ def train_model(train_loader):
 
 
 
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
@@ -120,6 +148,7 @@ def main(
     #output_path: Path = PROCESSED_DATA_DIR,
     # -----------------------------------------
 ):
+  
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info(" Begining training  ")
 
@@ -135,6 +164,7 @@ def main(
     
     logger.success(" End training ")
     # -----------------------------------------
+
 
 
 if __name__ == "__main__":
