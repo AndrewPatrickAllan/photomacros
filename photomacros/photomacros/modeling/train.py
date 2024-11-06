@@ -8,22 +8,7 @@ from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR
 import torch
 app = typer.Typer()
 
-
-
-@app.command()
-def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    features_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    label_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
-    input_path: Path = PROCESSED_DATA_DIR,
-    #output_path: Path = PROCESSED_DATA_DIR,
-    # -----------------------------------------
-):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Loading images and labels from the directory...")
-
-    # Gather all image paths and corresponding labels
+def load_data_labels(input_path):
     image_paths = []
     labels = []
 
@@ -61,6 +46,27 @@ def main(
     logger.success("Train, validation, and test datasets generation complete with labels.")
 
     return train_loader, val_loader, test_loader
+   
+
+@app.command()
+def main(
+    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
+    features_path: Path = PROCESSED_DATA_DIR / "features.csv",
+    label_path: Path = PROCESSED_DATA_DIR / "features.csv",
+    model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
+    input_path: Path = PROCESSED_DATA_DIR,
+    #output_path: Path = PROCESSED_DATA_DIR,
+    # -----------------------------------------
+):
+
+
+    # Create DataLoaders for each dataset
+    train_loader,val_loader, test_loader= load_data_labels(input_path)
+
+
+    logger.success("Train, validation, and test datasets generation complete with labels.")
+
+
 
 
 if __name__ == "__main__":
