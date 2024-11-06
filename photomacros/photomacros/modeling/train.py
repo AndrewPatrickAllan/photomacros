@@ -1,11 +1,9 @@
 from pathlib import Path
-
 import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE
-
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
 
 # imported ourselves --------
@@ -118,9 +116,28 @@ def load_data(input_data_dir):
 
 # Model training loop
 def train_model(train_loader):
-    model = ...  # Initialize your model here
-    optimizer = ...  # Define optimizer (e.g., Adam, SGD)
-    criterion = ...  # Define loss function (e.g., CrossEntropyLoss)
+
+    
+
+    # Initialize your model here
+    model = torch.nn.Sequential(
+        torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool2d(kernel_size=2, stride=2),
+        torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool2d(kernel_size=2, stride=2),
+        torch.nn.Flatten(),
+        torch.nn.Linear(64 * (IMAGE_SIZE // 4) * (IMAGE_SIZE // 4), 128),
+        torch.nn.ReLU(),
+        torch.nn.Linear(128, len(train_loader.dataset.classes))
+    )
+
+    # Define optimizer (e.g., Adam)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    # Define loss function (e.g., CrossEntropyLoss)
+    criterion = torch.nn.CrossEntropyLoss()
     
     model.train()  # Set model to training mode
     for epoch in range(NUM_EPOCHS):
@@ -134,6 +151,7 @@ def train_model(train_loader):
         print(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Loss: {loss.item():.4f}")
 
     print("Training complete")
+
 
 
 
@@ -157,8 +175,10 @@ def main(
     logger.info(" we are loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
 
-    # logger.info(" we are training the model ")
-    # train_model(train_loader)
+    print
+
+    logger.info(" we are training the model ")
+    train_model(train_loader)
 
 
     
