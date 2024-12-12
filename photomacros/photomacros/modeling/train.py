@@ -3,6 +3,9 @@ from pathlib import Path
 import typer
 from loguru import logger
 from tqdm import tqdm
+from torchvision import models 
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
 from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE
 
@@ -117,50 +120,73 @@ def load_data(input_data_dir):
     return train_loader, val_loader, test_loader
   
 # Model training loop
-def train_model(train_loader):
-    model = ...  # Initialize your model here
-    optimizer = ...  # Define optimizer (e.g., Adam, SGD)
-    criterion = ...  # Define loss function (e.g., CrossEntropyLoss)
-    
-    model.train()  # Set model to training mode
-    for epoch in range(NUM_EPOCHS):
-        for images, labels in train_loader:
+def train_model(train_loader, val_loader, model, optimizer, criterion, num_epochs=10):
+    model.train()
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
+            images, labels = images.cuda(), labels.cuda()
+
             optimizer.zero_grad()
+
             outputs = model(images)
             loss = criterion(outputs, labels)
+
             loss.backward()
             optimizer.step()
-        
-        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Loss: {loss.item():.4f}")
 
-    print("Training complete")
+            running_loss += loss.item()
 
+        logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}")
+        validate_model(val_loader, model, criterion)
 
+    logger.success("Training complete")
 
+def validate_model(val_loader, model, criterion):
+    model.eval()
+    val_loss = 0.0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.cuda(), labels.cuda()
+
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()
+
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    avg_val_loss = val_loss / len(val_loader)
+    accuracy = 100 * correct / total
+    logger.info(f"Validation Loss: {avg_val_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
 @app.command()
-def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    features_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    label_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
-    input_path: Path = PROCESSED_DATA_DIR,
-    #output_path: Path = PROCESSED_DATA_DIR,
-    # -----------------------------------------
-):
-  
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info(" Begining training  ")
-
-    logger.info(" beep bop boop ")
+def main(features_path: Path = PROCESSED_DATA_DIR / "features.csv",
+         label_path: Path = PROCESSED_DATA_DIR / "features.csv",
+         model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
+         input_path: Path = PROCESSED_DATA_DIR):
     
-    logger.info(" we are loading training data ")
+    logger.info("Beginning training...")
+    logger.info("Loading training data...")
     train_loader, val_loader, test_loader = load_data(input_path)
 
-    # logger.info(" we are training the model ")
-    # train_model(train_loader)
+    # Define model, optimizer, loss function
+    model = models.resnet18(pretrained=True)
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, len(set([label for _, label in train_loader.dataset])))
+    model = model.cuda()
 
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.CrossEntropyLoss()
 
+    # Train model
+    train_model(train_loader, val_loader, model, optimizer, criterion, num_epochs=10)
+
+    logger.success("Training complete")
     
     logger.success(" End training ")
     # -----------------------------------------
