@@ -4,6 +4,10 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 
+
+
+
+
 from photomacros.config import FIGURES_DIR, PROCESSED_DATA_DIR
 
 app = typer.Typer()
@@ -23,6 +27,9 @@ def main(
             logger.info("Something happened for iteration 5.")
     logger.success("Plot generation complete.")
     # -----------------------------------------
+
+
+
 
 
 if __name__ == "__main__":
