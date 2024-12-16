@@ -1,14 +1,9 @@
 from pathlib import Path
-
 import typer
 from loguru import logger
 from tqdm import tqdm
-from torchvision import models 
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE
-
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
 
 # imported ourselves --------
@@ -52,141 +47,151 @@ def get_validation_transforms():
         transforms.Normalize(mean=MEAN, std=STD)
     ])
 
-# STEP 1 - Splits data into 70% training, 15% validation, 15% testing
-def split_data(input_path):
-    
- 
-    image_paths = []
-    labels = []
 
-    # Traverse the directory
-    for label_dir in input_path.iterdir():
-        if label_dir.is_dir():  # Check if it's a directory (class label)
-            for img_file in label_dir.glob("*.jpg"):  # Load all jpg images
-                image_paths.append(img_file)
-                labels.append(label_dir.name)  # Use the directory name as the label
-               
+# Split data into training, validation, and testing sets
+from torch.utils.data import random_split
+def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+    # Load the dataset
+    dataset = datasets.ImageFolder(input_data_dir, transform=None)
 
-    logger.info(f"Loaded {len(image_paths)} images with corresponding labels.")
-    logger.info("Generating train, val, and test datasets...")
+    # Compute sizes for splits
+    dataset_size = len(dataset)
+    train_size = int(train_ratio * dataset_size)
+    val_size = int(val_ratio * dataset_size)
+    test_size = dataset_size - train_size - val_size
 
-    dataset_size = len(image_paths)
-
-    # Combine images and labels for easy splitting
-    dataset = list(zip(image_paths, labels))
-    
-
-    # Split the dataset into train, validation, and test sizes
-    train_size = int(0.7 * dataset_size)
-    val_size = int(0.15 * dataset_size)  # 15% for validation
-    test_size = dataset_size - train_size - val_size  # Remaining 15% for testing
-
-    # Randomly split datasets
+    # Split the dataset
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
     return train_dataset, val_dataset, test_dataset
-  
-  
 
-
-# Load datasets and create DataLoaders
+  
 def load_data(input_data_dir):
+    # Split the dataset
     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
 
-    # STEP 3 - Create DataLoaders with augmentations
+    # Apply transforms to each split
+    train_dataset.dataset.transform = get_augmentation_transforms()
+    val_dataset.dataset.transform = get_validation_transforms()
+    test_dataset.dataset.transform = get_validation_transforms()
+
+    # Create DataLoaders
     train_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
+        train_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=train_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=True  # Shuffle training data
     )
-
     val_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+        val_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=val_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=False  # No need to shuffle validation data
     )
-
     test_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+        test_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=test_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=False  # No need to shuffle test data
     )
-    
+
     logger.success("Train, validation, and test datasets generation complete with labels.")
-
     return train_loader, val_loader, test_loader
-  
-# Model training loop
-def train_model(train_loader, val_loader, model, optimizer, criterion, num_epochs=10):
-    model.train()
-    for epoch in range(num_epochs):
-        running_loss = 0.0
-        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
-            images, labels = images.cuda(), labels.cuda()
 
+
+
+
+# # Load datasets and create DataLoaders
+# def load_data(input_data_dir):
+#     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
+
+#     # STEP 3 - Create DataLoaders with augmentations
+#     train_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=train_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+
+#     val_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=val_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+
+#     test_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=test_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+    
+#     logger.success("Train, validation, and test datasets generation complete with labels.")
+
+#     return train_loader, val_loader, test_loader
+
+# # Model training loop
+def train_model(train_loader):
+
+    # Define model architecture
+    model = torch.nn.Sequential(
+    torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    torch.nn.Flatten(),
+    torch.nn.Linear(64 * (IMAGE_SIZE // 4) * (IMAGE_SIZE // 4), 128),
+    torch.nn.ReLU(),
+    torch.nn.Linear(128, len(train_loader.dataset.dataset.classes))  # Access original dataset
+)
+
+    # Define optimizer (e.g., Adam)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    # Define loss function (e.g., CrossEntropyLoss)
+    criterion = torch.nn.CrossEntropyLoss()
+    
+    model.train()  # Set model to training mode
+    for epoch in range(NUM_EPOCHS):   # NUM_EPOCHS=5 in config.py
+
+        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{NUM_EPOCHS}"):
             optimizer.zero_grad()
-
             outputs = model(images)
             loss = criterion(outputs, labels)
-
             loss.backward()
             optimizer.step()
+        
+        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")#, Loss: {loss.item():.4f}")
 
-            running_loss += loss.item()
+    print("Training complete")
 
-        logger.info(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(train_loader):.4f}")
-        validate_model(val_loader, model, criterion)
 
-    logger.success("Training complete")
 
-def validate_model(val_loader, model, criterion):
-    model.eval()
-    val_loss = 0.0
-    correct = 0
-    total = 0
 
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.cuda(), labels.cuda()
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            val_loss += loss.item()
-
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    avg_val_loss = val_loss / len(val_loader)
-    accuracy = 100 * correct / total
-    logger.info(f"Validation Loss: {avg_val_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
 @app.command()
-def main(features_path: Path = PROCESSED_DATA_DIR / "features.csv",
-         label_path: Path = PROCESSED_DATA_DIR / "features.csv",
-         model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
-         input_path: Path = PROCESSED_DATA_DIR):
+def main(
+    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
+    features_path: Path = PROCESSED_DATA_DIR / "features.csv",
+    label_path: Path = PROCESSED_DATA_DIR / "features.csv",
+    model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
+    input_path: Path = PROCESSED_DATA_DIR,
+    #output_path: Path = PROCESSED_DATA_DIR,
+    # -----------------------------------------
+):
+  
+    # ---- REPLACE THIS WITH YOUR OWN CODE ----
+    logger.info(" Begining training  ")
+
+    logger.info(" beep bop boop ")
     
-    logger.info("Beginning training...")
-    logger.info("Loading training data...")
+    logger.info(" we are loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
 
-    # Define model, optimizer, loss function
-    model = models.resnet18(pretrained=True)
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, len(set([label for _, label in train_loader.dataset])))
-    model = model.cuda()
+    logger.info(" we are training the model ")
+    train_model(train_loader)
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.CrossEntropyLoss()
 
-    # Train model
-    train_model(train_loader, val_loader, model, optimizer, criterion, num_epochs=10)
-
-    logger.success("Training complete")
     
     logger.success(" End training ")
     # -----------------------------------------
