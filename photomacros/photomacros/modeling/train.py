@@ -47,91 +47,103 @@ def get_validation_transforms():
         transforms.Normalize(mean=MEAN, std=STD)
     ])
 
-# STEP 1 - Splits data into 70% training, 15% validation, 15% testing
-def split_data(input_path):
-    
- 
-    image_paths = []
-    labels = []
 
-    # Traverse the directory
-    for label_dir in input_path.iterdir():
-        if label_dir.is_dir():  # Check if it's a directory (class label)
-            for img_file in label_dir.glob("*.jpg"):  # Load all jpg images
-                image_paths.append(img_file)
-                labels.append(label_dir.name)  # Use the directory name as the label
-               
+# Split data into training, validation, and testing sets
+from torch.utils.data import random_split
+def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+    # Load the dataset
+    dataset = datasets.ImageFolder(input_data_dir, transform=None)
 
-    logger.info(f"Loaded {len(image_paths)} images with corresponding labels.")
-    logger.info("Generating train, val, and test datasets...")
+    # Compute sizes for splits
+    dataset_size = len(dataset)
+    train_size = int(train_ratio * dataset_size)
+    val_size = int(val_ratio * dataset_size)
+    test_size = dataset_size - train_size - val_size
 
-    dataset_size = len(image_paths)
-
-    # Combine images and labels for easy splitting
-    dataset = list(zip(image_paths, labels))
-    
-
-    # Split the dataset into train, validation, and test sizes
-    train_size = int(0.7 * dataset_size)
-    val_size = int(0.15 * dataset_size)  # 15% for validation
-    test_size = dataset_size - train_size - val_size  # Remaining 15% for testing
-
-    # Randomly split datasets
+    # Split the dataset
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
     return train_dataset, val_dataset, test_dataset
-  
-  
 
-
-# Load datasets and create DataLoaders
+  
 def load_data(input_data_dir):
+    # Split the dataset
     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
 
-    # STEP 3 - Create DataLoaders with augmentations
+    # Apply transforms to each split
+    train_dataset.dataset.transform = get_augmentation_transforms()
+    val_dataset.dataset.transform = get_validation_transforms()
+    test_dataset.dataset.transform = get_validation_transforms()
+
+    # Create DataLoaders
     train_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
+        train_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=train_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=True  # Shuffle training data
     )
-
     val_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+        val_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=val_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=False  # No need to shuffle validation data
     )
-
     test_loader = DataLoader(
-        datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+        test_dataset, 
         batch_size=BATCH_SIZE, 
-        sampler=test_dataset,
-        shuffle=False  # Avoid shuffling as we're using a sampler
+        shuffle=False  # No need to shuffle test data
     )
-    
-    logger.success("Train, validation, and test datasets generation complete with labels.")
 
+    logger.success("Train, validation, and test datasets generation complete with labels.")
     return train_loader, val_loader, test_loader
 
-# Model training loop
+
+
+
+# # Load datasets and create DataLoaders
+# def load_data(input_data_dir):
+#     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
+
+#     # STEP 3 - Create DataLoaders with augmentations
+#     train_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=train_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+
+#     val_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=val_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+
+#     test_loader = DataLoader(
+#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
+#         batch_size=BATCH_SIZE, 
+#         sampler=test_dataset,
+#         shuffle=False  # Avoid shuffling as we're using a sampler
+#     )
+    
+#     logger.success("Train, validation, and test datasets generation complete with labels.")
+
+#     return train_loader, val_loader, test_loader
+
+# # Model training loop
 def train_model(train_loader):
 
-    
-
-    # Initialize your model here
+    # Define model architecture
     model = torch.nn.Sequential(
-        torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-        torch.nn.ReLU(),
-        torch.nn.MaxPool2d(kernel_size=2, stride=2),
-        torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-        torch.nn.ReLU(),
-        torch.nn.MaxPool2d(kernel_size=2, stride=2),
-        torch.nn.Flatten(),
-        torch.nn.Linear(64 * (IMAGE_SIZE // 4) * (IMAGE_SIZE // 4), 128),
-        torch.nn.ReLU(),
-        torch.nn.Linear(128, len(train_loader.dataset.classes))
-    )
+    torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    torch.nn.Flatten(),
+    torch.nn.Linear(64 * (IMAGE_SIZE // 4) * (IMAGE_SIZE // 4), 128),
+    torch.nn.ReLU(),
+    torch.nn.Linear(128, len(train_loader.dataset.dataset.classes))  # Access original dataset
+)
 
     # Define optimizer (e.g., Adam)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -140,7 +152,8 @@ def train_model(train_loader):
     criterion = torch.nn.CrossEntropyLoss()
     
     model.train()  # Set model to training mode
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(NUM_EPOCHS):   # NUM_EPOCHS=5 in config.py
+
         for images, labels in train_loader:
             optimizer.zero_grad()
             outputs = model(images)
@@ -148,7 +161,7 @@ def train_model(train_loader):
             loss.backward()
             optimizer.step()
         
-        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Loss: {loss.item():.4f}")
+        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")#, Loss: {loss.item():.4f}")
 
     print("Training complete")
 
@@ -174,8 +187,6 @@ def main(
     
     logger.info(" we are loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
-
-    print
 
     logger.info(" we are training the model ")
     train_model(train_loader)
