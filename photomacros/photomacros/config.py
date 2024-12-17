@@ -23,7 +23,7 @@ IMAGE_SIZE = 224  # Standard image size for models
 MEAN = [0.485, 0.456, 0.406]  # Mean values for normalization
 STD = [0.229, 0.224, 0.225]  # Standard deviation values for normalization
 BATCH_SIZE = 32  # Number of samples in each batch
-NUM_EPOCHS = 5 # Number of epochs to train the model
+NUM_EPOCHS = 1 # Number of epochs to train the model should be minimum 5
 
 
 # If tqdm is installed, configure loguru with tqdm.write

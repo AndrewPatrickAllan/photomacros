@@ -97,37 +97,6 @@ def load_data(input_data_dir):
 
 
 
-
-# # Load datasets and create DataLoaders
-# def load_data(input_data_dir):
-#     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
-
-#     # STEP 3 - Create DataLoaders with augmentations
-#     train_loader = DataLoader(
-#         datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms()), 
-#         batch_size=BATCH_SIZE, 
-#         sampler=train_dataset,
-#         shuffle=False  # Avoid shuffling as we're using a sampler
-#     )
-
-#     val_loader = DataLoader(
-#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
-#         batch_size=BATCH_SIZE, 
-#         sampler=val_dataset,
-#         shuffle=False  # Avoid shuffling as we're using a sampler
-#     )
-
-#     test_loader = DataLoader(
-#         datasets.ImageFolder(input_data_dir, transform=get_validation_transforms()), 
-#         batch_size=BATCH_SIZE, 
-#         sampler=test_dataset,
-#         shuffle=False  # Avoid shuffling as we're using a sampler
-#     )
-    
-#     logger.success("Train, validation, and test datasets generation complete with labels.")
-
-#     return train_loader, val_loader, test_loader
-
 # # Model training loop
 def train_model(train_loader):
 
@@ -165,7 +134,7 @@ def train_model(train_loader):
 
     print("Training complete")
 
-
+    return model
 
 
 
@@ -182,16 +151,16 @@ def main(
   
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info(" Begining training  ")
-
-    logger.info(" beep bop boop ")
     
-    logger.info(" we are loading training data ")
+    logger.info(" Loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
 
-    logger.info(" we are training the model ")
-    train_model(train_loader)
+    logger.info(" Training the model ")
+    trained_model=train_model(train_loader)
 
-
+    logger.info(f"Saving the trained model to {model_path}...")
+    torch.save(trained_model.state_dict(), model_path)  # Save model weights
+    logger.success(f"Model saved to {model_path}.")
     
     logger.success(" End training ")
     # -----------------------------------------
