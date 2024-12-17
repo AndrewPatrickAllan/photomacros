@@ -3,7 +3,7 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS, test_data_path
 
 
 # imported ourselves --------
@@ -75,6 +75,10 @@ def load_data(input_data_dir):
     val_dataset.dataset.transform = get_validation_transforms()
     test_dataset.dataset.transform = get_validation_transforms()
 
+    # Save the test dataset to a file for inference
+    torch.save(test_dataset, test_data_path)
+    logger.success(f"Test dataset saved to {test_data_path}")
+
     # Create DataLoaders
     train_loader = DataLoader(
         train_dataset, 
@@ -98,46 +102,41 @@ def load_data(input_data_dir):
 
 
 
-# def get_model(image_size, num_classes):
-#     """
-#     Return the model architecture used for training. (used also in predict.py)
+def get_model_architecture(image_size, num_classes):
+    """
+    Return the model architecture used for training. (used also in predict.py)
     
-#     Args:
-#         image_size (int): The size of the input image (assumes square images).
-#         num_classes (int): The number of output classes.
-#     """
-#     model = torch.nn.Sequential(
-#         torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-#         torch.nn.ReLU(),
-#         torch.nn.MaxPool2d(kernel_size=2, stride=2),
-#         torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-#         torch.nn.ReLU(),
-#         torch.nn.MaxPool2d(kernel_size=2, stride=2),
-#         torch.nn.Flatten(),
-#         torch.nn.Linear(64 * (image_size // 4) * (image_size // 4), 128),
-#         torch.nn.ReLU(),
-#         torch.nn.Linear(128, num_classes)
-#     )
-#     return model
+    Args:
+        image_size (int): The size of the input image (assumes square images).
+        num_classes (int): The number of output classes.
+    """
+    model = torch.nn.Sequential(
+        torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool2d(kernel_size=2, stride=2),
+        torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+        torch.nn.ReLU(),
+        torch.nn.MaxPool2d(kernel_size=2, stride=2),
+        torch.nn.Flatten(),
+        torch.nn.Linear(64 * (image_size // 4) * (image_size // 4), 128),
+        torch.nn.ReLU(),
+        torch.nn.Linear(128, num_classes)
+    )
+    return model
 
 
 
 # # Model training loop
 def train_model(train_loader):
 
+    num_classes=len(train_loader.dataset.dataset.classes)
     # Define model architecture
-    model = torch.nn.Sequential(
-    torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
-    torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
-    torch.nn.Flatten(),
-    torch.nn.Linear(64 * (IMAGE_SIZE // 4) * (IMAGE_SIZE // 4), 128),
-    torch.nn.ReLU(),
-    torch.nn.Linear(128, len(train_loader.dataset.dataset.classes))  # Access original dataset
-)
+    model = get_model_architecture(IMAGE_SIZE, num_classes)
+    
+    # Save number of classes for future use
+    with open(MODELS_DIR / "num_classes.txt", "w") as f:
+        f.write(str(num_classes))
+
 
     # Define optimizer (e.g., Adam)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -165,18 +164,14 @@ def train_model(train_loader):
 
 @app.command()
 def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
     features_path: Path = PROCESSED_DATA_DIR / "features.csv",
     label_path: Path = PROCESSED_DATA_DIR / "features.csv",
     model_path: Path = MODELS_DIR / "model.pkl",
     input_path: Path = PROCESSED_DATA_DIR,
     #output_path: Path = PROCESSED_DATA_DIR,
-    # -----------------------------------------
 ):
   
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info(" Begining training  ")
-    
     logger.info(" Loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
 
@@ -188,7 +183,6 @@ def main(
     logger.success(f"Model saved to {model_path}.")
     
     logger.success(" End training ")
-    # -----------------------------------------
 
 
 
