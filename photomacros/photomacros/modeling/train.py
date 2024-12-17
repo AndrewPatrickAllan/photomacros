@@ -97,6 +97,31 @@ def load_data(input_data_dir):
 
 
 
+
+# def get_model(image_size, num_classes):
+#     """
+#     Return the model architecture used for training. (used also in predict.py)
+    
+#     Args:
+#         image_size (int): The size of the input image (assumes square images).
+#         num_classes (int): The number of output classes.
+#     """
+#     model = torch.nn.Sequential(
+#         torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+#         torch.nn.ReLU(),
+#         torch.nn.MaxPool2d(kernel_size=2, stride=2),
+#         torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+#         torch.nn.ReLU(),
+#         torch.nn.MaxPool2d(kernel_size=2, stride=2),
+#         torch.nn.Flatten(),
+#         torch.nn.Linear(64 * (image_size // 4) * (image_size // 4), 128),
+#         torch.nn.ReLU(),
+#         torch.nn.Linear(128, num_classes)
+#     )
+#     return model
+
+
+
 # # Model training loop
 def train_model(train_loader):
 
@@ -143,7 +168,7 @@ def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
     features_path: Path = PROCESSED_DATA_DIR / "features.csv",
     label_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    model_path: Path = PROCESSED_DATA_DIR / "model.pkl",
+    model_path: Path = MODELS_DIR / "model.pkl",
     input_path: Path = PROCESSED_DATA_DIR,
     #output_path: Path = PROCESSED_DATA_DIR,
     # -----------------------------------------
