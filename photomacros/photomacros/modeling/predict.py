@@ -42,17 +42,7 @@ def perform_inference(model_path: Path,
         batch_size (int): Batch size for DataLoader.
     """
     
-    # # Step 1: Initialize the model architecture
-    # model = get_model_architecture(IMAGE_SIZE, num_classes)
-    
-    # # Step 2: Load the trained weights (state_dict) into the model
-    # model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-    # model.eval()  # Set the model to evaluation mode
 
- 
-    # Step 1: Load num_classes from the saved file
-    # with open(MODELS_DIR / "num_classes.txt", "r") as f:
-    #     num_classes =  int(f.read().strip())
     num_classes = 101
     
     # Step 2: Initialize the model architecture
