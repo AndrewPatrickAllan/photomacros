@@ -35,9 +35,9 @@ environment:
   - name: DATA_DIR
     value: "data"
 
-formats:
-  - html
-  - pdf
+# formats:
+#   - html
+#   - pdf
 
 # Optional: Add extra steps like generating plots or preprocessing during documentation build
 build:
