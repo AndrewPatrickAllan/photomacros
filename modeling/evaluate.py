@@ -6,7 +6,7 @@ from pathlib import Path
 from photomacros.config import PROCESSED_DATA_DIR, REPORTS_DIR
 
 
-# we have created evaluate.py to evaluate the model predictions generated in predict.py 
+# we have created evaluate.py to evaluate the model predictions generated in predict.py
 
 def load_predictions(predictions_path):
     """
