@@ -84,18 +84,18 @@ def load_data(input_data_dir):
 
     # Create DataLoaders
     train_loader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
+        train_dataset, 
+        batch_size=BATCH_SIZE, 
         shuffle=True  # Shuffle training data
     )
     val_loader = DataLoader(
-        val_dataset,
-        batch_size=BATCH_SIZE,
+        val_dataset, 
+        batch_size=BATCH_SIZE, 
         shuffle=False  # No need to shuffle validation data
     )
     test_loader = DataLoader(
-        test_dataset,
-        batch_size=BATCH_SIZE,
+        test_dataset, 
+        batch_size=BATCH_SIZE, 
         shuffle=False  # No need to shuffle test data
     )
 
@@ -150,8 +150,8 @@ def train_model(train_loader):
     model.train()  # Set model to training mode
     for epoch in range(NUM_EPOCHS):  # NUM_EPOCHS is defined in config.py
         # Add a tqdm progress bar for the epoch
-        progress_bar = tqdm(enumerate(train_loader),
-                            total=len(train_loader),
+        progress_bar = tqdm(enumerate(train_loader), 
+                            total=len(train_loader), 
                             desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
 
         for batch_idx, (images, labels) in progress_bar:
