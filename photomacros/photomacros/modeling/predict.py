@@ -22,62 +22,49 @@ from photomacros.modeling.train import load_data, get_model_architecture  # Impo
 # import random
 # -------------------
 
-
-
-
- 
-
-def perform_inference(model_path: Path, 
-                      input_path: Path, 
-                      predictions_path: Path, 
-                      batch_size: int = 32):
+def perform_inference(
+    model_path: Path, 
+    test_data_path: Path, 
+    predictions_path: Path, 
+    batch_size: int = 32
+):
     """
-    Perform inference on the test dataset using a trained model and save predictions to a CSV file.
-    inference is the act of applying the model (using its learned parameters) to input data to predict outcomes.
+    Perform inference on the test dataset using a trained model and save predictions to a file.
 
     Args:
         model_path (Path): Path to the trained model file (.pkl or .pth).
-        input_data_dir (Path): Path to the input data directory (raw or processed images).
-        predictions_path (Path): Path to save the predictions CSV file.
+        test_data_path (Path): Path to the saved test dataset.
+        predictions_path (Path): Path to save the predictions.
         batch_size (int): Batch size for DataLoader.
     """
-    
-    # # Step 1: Initialize the model architecture
-    # model = get_model_architecture(IMAGE_SIZE, num_classes)
-    
-    # # Step 2: Load the trained weights (state_dict) into the model
-    # model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-    # model.eval()  # Set the model to evaluation mode
+    # Step 1: Determine the number of classes
+    with open(MODELS_DIR / "num_classes.txt", "r") as f:
+        num_classes = int(f.read().strip())
 
- 
-    # Step 1: Load num_classes from the saved file
-    # with open(MODELS_DIR / "num_classes.txt", "r") as f:
-    #     num_classes =  int(f.read().strip())
-    num_classes = 101
-    
     # Step 2: Initialize the model architecture
-    logger.info("Initializing the model architecture...")   
+    logger.info("Initializing the model architecture...")
     model = get_model_architecture(IMAGE_SIZE, num_classes)
-    
-    # Step 3: Load the trained weights (state_dict) into the model
+
+    # Step 3: Load the trained model
+    logger.info(f"Loading trained model from {model_path}...")
     model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
     model.eval()  # Set the model to evaluation mode
     logger.success("Model loaded successfully.")
 
-    # Step 4: Load the saved test dataset
+    # Step 4: Load the test dataset
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset = torch.load(test_data_path)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     logger.success("Test dataset loaded successfully.")
 
     # Step 5: Perform inference
-    logger.info("Performing inference...")
+    logger.info("Performing inference on the test dataset...")
     predictions = []
 
     with torch.no_grad():  # Disable gradient computation for inference
-        for images, labels in test_loader:  # Load images and labels
+        for images, labels in test_loader:  # Only images are needed during inference
             outputs = model(images)
-            predicted_classes = outputs.argmax(dim=1)  # For classification tasks
+            predicted_classes = outputs.argmax(dim=1)  # Get class predictions
             predictions.extend(predicted_classes.cpu().numpy())
 
     # Step 6: Save predictions
@@ -86,45 +73,62 @@ def perform_inference(model_path: Path,
     logger.success(f"Predictions saved to {predictions_path}.")
 
 
+def save_test_labels(
+    predictions, 
+    test_data_path: Path, 
+    output_path: Path
+):
+    """
+    Save predictions and corresponding labels to a file.
 
+    Args:
+        predictions (list): List of predicted labels.
+        test_data_path (Path): Path to the test dataset file.
+        output_path (Path): Path to save the labeled predictions.
+    """
+    logger.info(f"Loading test dataset from {test_data_path}...")
+    test_dataset = torch.load(test_data_path)
 
-def save_test_labels(predictions, test_dataset_path: Path, output_path: Path):
-    # Load test data
-    test_data = torch.load(test_dataset_path)
+    logger.info("Creating DataFrame with predictions and ground truth labels...")
+    test_labels = [label for _, label in test_dataset]
+    test_images = [f"Image_{i}" for i in range(len(test_labels))]  # Placeholder image IDs
 
-    # Assuming test_data contains images and labels (image, label pairs)
-    # predictions should match the labels from the test_data
     test_df = pd.DataFrame({
-        'image': [item[0] for item in test_data],
-        'predicted_label': predictions
+        "image": test_images,
+        "ground_truth_label": test_labels,
+        "predicted_label": predictions
     })
 
-    # Save to CSV
+    logger.info(f"Saving labeled predictions to {output_path}...")
     test_df.to_csv(output_path, index=False)
+    logger.success(f"Labeled predictions saved to {output_path}.")
 
 
 @app.command()
 def main(
-    features_path: Path = PROCESSED_DATA_DIR / "features.csv", # also in train.py 
     model_path: Path = MODELS_DIR / "model.pkl",
-    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.pt",  # we changed from .csv to .pt given the high number of data in food 101. 
-    input_path: Path = PROCESSED_DATA_DIR, # added ourselves, copied from train.py, 
-    test_labels_path = Path(PROCESSED_DATA_DIR) / "test_labels.pt" # was previously in csv burt was just image matrix and labels (index) so not human readbale anyway. 
+    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.pt",
+    test_data_path: Path = test_data_path,
+    test_labels_output_path: Path = PROCESSED_DATA_DIR / "test_labels.csv"
 ):
-
-    logger.info("Performing inference for model...")
-    perform_inference(model_path,  input_path,  predictions_path, batch_size = BATCH_SIZE)
-    logger.success("Inference complete.")
-
+    """
+    Main function to perform inference and save predictions with labels.
+    """
+    logger.info("Starting inference process...")
+    perform_inference(
+        model_path=model_path,
+        test_data_path=test_data_path,
+        predictions_path=predictions_path,
+        batch_size=BATCH_SIZE
+    )
 
     # Load predictions
     predictions = torch.load(predictions_path)
 
-    logger.info(f"Save predictions with corresponding labels to {test_labels_path}...") 
     # Save predictions with corresponding labels
-    save_test_labels(predictions, test_data_path, test_labels_path)
-    logger.success(f"Test labels saved to {test_labels_path}")
-
+    logger.info(f"Saving predictions with corresponding labels to {test_labels_output_path}...")
+    save_test_labels(predictions, test_data_path, test_labels_output_path)
+    logger.success("Inference process completed.")
 
 
 if __name__ == "__main__":

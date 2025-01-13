@@ -76,7 +76,10 @@ def load_data(input_data_dir):
     test_dataset.dataset.transform = get_validation_transforms()
 
     # Save the test dataset to a file for inference
-    torch.save(test_dataset, test_data_path)
+    #torch.save(test_dataset, test_data_path)
+    torch.save(test_dataset , MODELS_DIR/ "test_data.pt")
+    torch.save(val_dataset, MODELS_DIR/ "val_data.pt")
+    torch.save( train_dataset, MODELS_DIR / "train_data.pt")
     logger.success(f"Test dataset saved to {test_data_path}")
 
     # Create DataLoaders
@@ -145,18 +148,25 @@ def train_model(train_loader):
     criterion = torch.nn.CrossEntropyLoss()
     
     model.train()  # Set model to training mode
-    for epoch in range(NUM_EPOCHS):   # NUM_EPOCHS=5 in config.py
+    for epoch in range(NUM_EPOCHS):  # NUM_EPOCHS is defined in config.py
+        # Add a tqdm progress bar for the epoch
+        progress_bar = tqdm(enumerate(train_loader), 
+                            total=len(train_loader), 
+                            desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
 
-        for images, labels in train_loader:
+        for batch_idx, (images, labels) in progress_bar:
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-        
-        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")#, Loss: {loss.item():.4f}")
 
-    print("Training complete")
+            # Update progress bar with loss value
+            progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
+
+            print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}] complete.")
+
+        print("Training complete.")
 
     return model
 
@@ -174,6 +184,7 @@ def main(
     logger.info(" Begining training  ")
     logger.info(" Loading training data ")
     train_loader, val_loader, test_loader = load_data(input_path)
+
 
     logger.info(" Training the model ")
     trained_model=train_model(train_loader)

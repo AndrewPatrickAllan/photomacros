@@ -26,7 +26,7 @@ def evaluate_predictions(predictions, ground_truth_labels):
     """
     # Extract predicted and actual labels
     y_pred = predictions  # Assuming predictions are saved as class indices
-    y_true = ground_truth_labels["label"].values
+    y_true = ground_truth_labels["ground_truth_label"].values
 
     # Calculate metrics
     accuracy = accuracy_score(y_true, y_pred)
@@ -37,7 +37,7 @@ def evaluate_predictions(predictions, ground_truth_labels):
 def main(
     
     predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.pt",  # from predict.py
-    test_labels_path: Path = PROCESSED_DATA_DIR / "test_labels.pt",  # from predict.py
+    test_labels_path: Path = PROCESSED_DATA_DIR / "test_labels.csv",  # from predict.py
     metrics_output_path: Path = REPORTS_DIR / "metrics.json"
 ):
     """
