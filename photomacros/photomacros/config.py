@@ -35,7 +35,7 @@ MEAN = [0.485, 0.456, 0.406]  # Mean values for normalization
 STD = [0.229, 0.224, 0.225]  # Standard deviation values for normalization
 BATCH_SIZE = 32  # Number of samples in each batch
 NUM_EPOCHS = 5 # Number of epochs to train the model should be minimum 5
-test_data_path = PROCESSED_DATA_DIR / "test_dataset.pt"  # added ourselves, for predict.py to use in perform_inference function
+test_data_path = MODELS_DIR / "test_data.pt"  # added ourselves, for predict.py to use in perform_inference function
 
 
 
