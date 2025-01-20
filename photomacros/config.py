@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os 
 from dotenv import load_dotenv
 from loguru import logger
 # If tqdm is installed, configure loguru with tqdm.write
@@ -20,7 +20,8 @@ load_dotenv()
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
-DATA_DIR = PROJ_ROOT / "data"
+# DATA_DIR = PROJ_ROOT / "data"
+DATA_DIR = Path("~/Documents/GitHub/data").expanduser()
 RAW_DATA_DIR = DATA_DIR / "raw"
 INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
