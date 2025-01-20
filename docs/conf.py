@@ -31,5 +31,7 @@ html_static_path = ['_static']
 # Add your project directory to sys.path to allow imports
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../src'))  # Update if your Python files are in a different directory
+# sys.path.insert(0, os.path.abspath('../src'))  # Update if your Python files are in a different directory
+# sys.path.insert(0, os.path.abspath('../modeling/'))  # Update if your Python files are in a different directory
+sys.path.insert(0, os.path.abspath('../'))
 
