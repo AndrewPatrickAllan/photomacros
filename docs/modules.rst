@@ -16,7 +16,7 @@ documentation for details.
    :caption: Contents:
 
    modules
-
+   
    predict
 
 Indices and tables

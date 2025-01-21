@@ -1,0 +1,76 @@
+Welcome to photomacros's documentation! (from index.rst)
+========================================
+
+:mod:`Photomacros` is xxx -manually added 
+
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: Contents:
+
+
+
+.. grid:: 2
+
+    .. grid-item-card::
+
+        User Guide
+        ^^^^^^^^^^
+
+        The user guide provides in-depth information on the key concepts of Aksara.
+
+        +++
+
+        .. button-ref:: aa_user_guide
+            :expand:
+            :color: secondary
+            :click-parent:
+
+            To the user guide
+
+    .. grid-item-card::
+
+        API Reference
+        ^^^^^^^^^^^^^
+
+        The API reference provides a detailed description on the public API of Aksara library. The reference will 
+        describes how the methods works and which parameters can be used.
+
+        +++
+
+        .. button-ref:: reference
+            :expand:
+            :color: secondary
+            :click-parent:
+
+            To the API reference
+
+    .. grid-item-card::
+        :margin: auto
+        :padding: 3 0 0 0
+
+        Contributor Guide
+        ^^^^^^^^^^^^^^^^^^
+
+        Find bugs and want to fix it? or want to improve Aksara Model or public API? This guide will provides information
+        on how to improve Aksara.
+
+        +++
+
+        .. button-ref:: contributor_guide
+            :expand:
+            :color: secondary
+            :click-parent:
+
+            To the Contibutor Guide
+
+.. toctree::
+    :maxdepth: 3
+    :hidden:
+    :titlesonly:
+
+    .. user_guide/index
+    .. reference/index
+    .. contributor_guide/index
+
+   photomacros.rst  # This references photomacros.rst
+   modeling.rst    # This references modeling.rst
