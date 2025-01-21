@@ -1,8 +1,18 @@
+.. module:: photomacros
+
 modeling package
 ================
 
-Submodules
-----------
+TEXTING IN /docs/modling/index
+
+.. toctree::
+    :maxdepth: 1
+    
+    index.rst
+
+
+.. Submodules
+.. ----------
 
 modeling.evaluate module
 ------------------------
@@ -35,3 +45,7 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+
+
+
+
