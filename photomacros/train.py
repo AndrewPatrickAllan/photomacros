@@ -198,18 +198,7 @@ def main(
     #output_path: Path = PROCESSED_DATA_DIR,
 ):
     """
-    train train train traintrain traintrain traintrain traintrain traintrain traintrain train
-
-    Parameters
-    ----------
-    input_dir : Path
-        train traintrain traintrain traintrain train CHOO CHOO 
-    output_dir : Path
-        train traintrain traintrain traintrain train CHOO CHOO 
-        
-    Returns
-    -------
-    None
+    raining the model -MAIN COMMENT
     """
   
     logger.info(" Begining training  ")

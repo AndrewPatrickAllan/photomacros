@@ -17,6 +17,8 @@ documentation for details.
 
    modules
 
+   predict
+
 Indices and tables
 ==================
 
