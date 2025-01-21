@@ -17,5 +17,6 @@ typer
 numpydoc
 sphinx_copybutton
 sphinx_design
+pydata_sphinx_theme
 
 
