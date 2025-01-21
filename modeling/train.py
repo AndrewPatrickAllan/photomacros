@@ -25,8 +25,14 @@ app = typer.Typer()
 random.seed(46)
 
 
-# Define on-the-fly augmentations and normalization for training data
+
 def get_augmentation_transforms():
+
+    """
+    Define on-the-fly augmentations and normalization for training data
+    """
+
+
     return transforms.Compose([
         transforms.RandomRotation(degrees=15),           # Rotate images slightly
         transforms.RandomHorizontalFlip(p=0.5),          # Flip images horizontally with a 50% chance
@@ -131,6 +137,17 @@ def get_model_architecture(image_size, num_classes):
 
 # # Model training loop
 def train_model(train_loader):
+
+    """
+    Summary of the function train_model.
+
+    Args:
+        param1 (type): Description of param1.
+        param2 (type): Description of param2.
+
+    Returns:
+        type: Description of the return value.
+    """
 
     num_classes=len(train_loader.dataset.dataset.classes)
     # Define model architecture

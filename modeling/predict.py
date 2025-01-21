@@ -15,7 +15,7 @@ app = typer.Typer()
 # imported ourselves --------
 import torch
 from torch.utils.data import DataLoader
-from photomacros.modeling.train import load_data, get_model_architecture  # Importing own existing load_data function from train.py
+from train import load_data, get_model_architecture  # Importing own existing load_data function from train.py
 # from torchvision import datasets, transforms
 # import config
 # from photomacros import dataset
