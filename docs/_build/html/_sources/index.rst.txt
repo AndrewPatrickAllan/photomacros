@@ -12,12 +12,8 @@ Welcome to photomacros's documentation!
 .. hlist::
    :columns: 1
 
-   * Word segmentation (tokenization)
-   * Lemmatization
-   * POS tagging
-   * Morphological features analysis
-   * Dependency Parsing
-
+   * bullet
+   * points
 
 
 .. toctree::
@@ -25,7 +21,7 @@ Welcome to photomacros's documentation!
    :caption: Contents:
 
 
-   aa_user_guide/index.rst
+   user_guide/index.rst
    modeling/index.rst
    photomacros/index.rst
 
@@ -40,11 +36,11 @@ Welcome to photomacros's documentation!
         User Guide
         ^^^^^^^^^^
 
-        The user guide provides in-depth information on the key concepts of Aksara.
+        Guide to creating your own model or replicating the one in this project.
 
         +++
 
-        .. button-ref:: aa_user_guide
+        .. button-ref:: user_guide
             :expand:
             :color: secondary
             :click-parent:

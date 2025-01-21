@@ -21,7 +21,7 @@ Welcome to photomacros's documentation!
    :caption: Contents:
 
 
-   aa_user_guide/index.rst
+   user_guide/index.rst
    modeling/index.rst
    photomacros/index.rst
 
@@ -40,7 +40,7 @@ Welcome to photomacros's documentation!
 
         +++
 
-        .. button-ref:: aa_user_guide
+        .. button-ref:: user_guide
             :expand:
             :color: secondary
             :click-parent:
