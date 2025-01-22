@@ -90,89 +90,14 @@
 <section id="config">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Config</a><a class="headerlink" href="#config" title="Link to this heading"></a></h2>
 <p>The <cite>config</cite> module contains the necessary configuration settings for the project.</p>
-<p>Configuration file for setting paths, constants, and environment variables.</p>
-<p>This script:
-- Loads environment variables from a <cite>.env</cite> file.
-- Defines paths for various directories and files in the project.
-- Sets constants used for data processing and model training.</p>
 </section>
 <section id="dataset">
 <h2><a class="toc-backref" href="#id3" role="doc-backlink">Dataset</a><a class="headerlink" href="#dataset" title="Link to this heading"></a></h2>
 <p>The <cite>dataset</cite> module manages the raw and processed datasets.</p>
-<p>Image Processing Script</p>
-<p>This script processes <cite>.jpg</cite> images from a specified input directory, resizes them to 256x256, 
-and saves them in the specified output directory while preserving the original subdirectory structure.</p>
-<p>Features:
-- Recursively processes images in the input directory.
-- Ensures the output directory structure matches the input.
-- Logs processing progress and errors using <cite>loguru</cite> and <cite>tqdm</cite>.</p>
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">photomacros.dataset.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/Users/osmarg/Documents/GitHub/data/raw/food101/images')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/Users/osmarg/Documents/GitHub/data/processed')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/photomacros/dataset.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Resize and process all .jpg images from the input directory and save to the output directory.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>input_dir</strong><span class="classifier">Path, optional</span></dt><dd><p>Path to the directory containing raw images. Defaults to RAW_DATA_DIR / “food101/images”.</p>
-</dd>
-<dt><strong>output_dir</strong><span class="classifier">Path, optional</span></dt><dd><p>Path to the directory where processed images will be saved. Defaults to PROCESSED_DATA_DIR.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>None</dt><dd><p>This function does not return anything. It processes images and saves them to the output directory.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>input_dir</strong> (<em>Path</em>)</p></li>
-<li><p><strong>output_dir</strong> (<em>Path</em>)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 </section>
 <section id="features">
 <h2><a class="toc-backref" href="#id4" role="doc-backlink">Features</a><a class="headerlink" href="#features" title="Link to this heading"></a></h2>
 <p>The <cite>features</cite> module provides feature extraction and processing routines.</p>
-<p>Feature Generation Script</p>
-<p>This script is designed to generate features from a dataset. Currently, the feature generation step
-is placeholder and needs to be replaced with your own code. The script also includes basic logging functionality
-to track the progress of the feature generation process.</p>
-<p>Features:
-- The ability to specify the input and output directories.
-- Logs the start and completion of the feature generation process.</p>
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">photomacros.features.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/Users/osmarg/Documents/GitHub/data/processed')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/Users/osmarg/Documents/GitHub/data/processed')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/photomacros/features.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Placeholder function for generating features from a dataset.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>input_path</strong><span class="classifier">Path, optional</span></dt><dd><p>The path to the input dataset directory. Defaults to PROCESSED_DATA_DIR.</p>
-</dd>
-<dt><strong>output_path</strong><span class="classifier">Path, optional</span></dt><dd><p>The path to the output directory where generated features will be saved. Defaults to PROCESSED_DATA_DIR.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>None</dt><dd><p>This function does not return anything. It processes the dataset and logs the results.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>input_path</strong> (<em>Path</em>)</p></li>
-<li><p><strong>output_path</strong> (<em>Path</em>)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 </section>
 </section>
 
