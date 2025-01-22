@@ -1,0 +1,273 @@
+Results of doctest builder run on 2025-01-21 20:53:55
+=====================================================
+
+Document: modeling/sklearn-env/lib/python3.11/site-packages/sklearn/datasets/descr/twenty_newsgroups
+----------------------------------------------------------------------------------------------------
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    show_top10(clf, vectorizer, newsgroups_train.target_names)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[2]>", line 1, in <module>
+        show_top10(clf, vectorizer, newsgroups_train.target_names)
+    NameError: name 'clf' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    newsgroups_test = fetch_20newsgroups(subset='test',
+                                         remove=('headers', 'footers', 'quotes'),
+                                         categories=categories)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[0]>", line 1, in <module>
+        newsgroups_test = fetch_20newsgroups(subset='test',
+    NameError: name 'fetch_20newsgroups' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    vectors_test = vectorizer.transform(newsgroups_test.data)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[1]>", line 1, in <module>
+        vectors_test = vectorizer.transform(newsgroups_test.data)
+    NameError: name 'vectorizer' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    pred = clf.predict(vectors_test)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[2]>", line 1, in <module>
+        pred = clf.predict(vectors_test)
+    NameError: name 'clf' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    metrics.f1_score(pred, newsgroups_test.target, average='macro')
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[3]>", line 1, in <module>
+        metrics.f1_score(pred, newsgroups_test.target, average='macro')
+    NameError: name 'metrics' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    newsgroups_train = fetch_20newsgroups(subset='train',
+                                          remove=('headers', 'footers', 'quotes'),
+                                          categories=categories)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[0]>", line 1, in <module>
+        newsgroups_train = fetch_20newsgroups(subset='train',
+    NameError: name 'fetch_20newsgroups' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    vectors = vectorizer.fit_transform(newsgroups_train.data)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[1]>", line 1, in <module>
+        vectors = vectorizer.fit_transform(newsgroups_train.data)
+    NameError: name 'vectorizer' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    clf = MultinomialNB(alpha=.01)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[2]>", line 1, in <module>
+        clf = MultinomialNB(alpha=.01)
+    NameError: name 'MultinomialNB' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    clf.fit(vectors, newsgroups_train.target)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[3]>", line 1, in <module>
+        clf.fit(vectors, newsgroups_train.target)
+    NameError: name 'clf' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    vectors_test = vectorizer.transform(newsgroups_test.data)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[0]>", line 1, in <module>
+        vectors_test = vectorizer.transform(newsgroups_test.data)
+    NameError: name 'vectorizer' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    pred = clf.predict(vectors_test)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[1]>", line 1, in <module>
+        pred = clf.predict(vectors_test)
+    NameError: name 'clf' is not defined
+**********************************************************************
+File "None", line ?, in default
+Failed example:
+    metrics.f1_score(newsgroups_test.target, pred, average='macro')
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[2]>", line 1, in <module>
+        metrics.f1_score(newsgroups_test.target, pred, average='macro')
+    NameError: name 'metrics' is not defined
+**********************************************************************
+1 items had failures:
+  12 of  14 in default
+14 tests in 1 items.
+2 passed and 12 failed.
+***Test Failed*** 12 failures.
+
+Document: modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README
+---------------------------------------------------------------------------
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 111, in default
+Failed example:
+    import numpy.core.ma as old_ma
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[0]>", line 1, in <module>
+        import numpy.core.ma as old_ma
+    ModuleNotFoundError: No module named 'numpy.core.ma'
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 112, in default
+Failed example:
+    import maskedarray as new_ma
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[1]>", line 1, in <module>
+        import maskedarray as new_ma
+    ModuleNotFoundError: No module named 'maskedarray'
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 113, in default
+Failed example:
+    x = old_ma.array([1,2,3,4,5], mask=[0,0,1,0,0])
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[2]>", line 1, in <module>
+        x = old_ma.array([1,2,3,4,5], mask=[0,0,1,0,0])
+    NameError: name 'old_ma' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 114, in default
+Failed example:
+    x
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[3]>", line 1, in <module>
+        x
+    NameError: name 'x' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 120, in default
+Failed example:
+    y = new_ma.array([1,2,3,4,5], mask=[0,0,1,0,0])
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[4]>", line 1, in <module>
+        y = new_ma.array([1,2,3,4,5], mask=[0,0,1,0,0])
+    NameError: name 'new_ma' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 121, in default
+Failed example:
+    y
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[5]>", line 1, in <module>
+        y
+    NameError: name 'y' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 125, in default
+Failed example:
+    x==y
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[6]>", line 1, in <module>
+        x==y
+    NameError: name 'x' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 131, in default
+Failed example:
+    old_ma.getmask(x) == new_ma.getmask(x)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[7]>", line 1, in <module>
+        old_ma.getmask(x) == new_ma.getmask(x)
+    NameError: name 'old_ma' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 133, in default
+Failed example:
+    old_ma.getmask(y) == new_ma.getmask(y)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[8]>", line 1, in <module>
+        old_ma.getmask(y) == new_ma.getmask(y)
+    NameError: name 'old_ma' is not defined
+**********************************************************************
+File "modeling/sklearn-env/lib/python3.11/site-packages/numpy/ma/README.rst", line 135, in default
+Failed example:
+    old_ma.getmask(y)
+Exception raised:
+    Traceback (most recent call last):
+      File "/opt/anaconda3/envs/photomacros/lib/python3.9/doctest.py", line 1334, in __run
+        exec(compile(example.source, filename, "single",
+      File "<doctest default[9]>", line 1, in <module>
+        old_ma.getmask(y)
+    NameError: name 'old_ma' is not defined
+**********************************************************************
+1 items had failures:
+  10 of  10 in default
+10 tests in 1 items.
+0 passed and 10 failed.
+***Test Failed*** 10 failures.
+
+Doctest summary
+===============
+   24 tests
+   22 failures in tests
+    0 failures in setup code
+    0 failures in cleanup code
