@@ -15,14 +15,25 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    """
-    
-    """
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
     input_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
     output_path: Path = FIGURES_DIR / "plot.png",
     # -----------------------------------------
 ):
+    """
+    plot plot plot, i am a plot 
+
+    Parameters
+    ----------
+    input_dir : Path
+        plot plot plot, i am a plot  
+    output_dir : Path
+        plot plot plot, i am a plot  
+        
+    Returns
+    -------
+    None
+    """
     # ---- REPLACE THIS WITH YOUR OWN CODE ----
     logger.info("Generating plot from data...")
     for i in tqdm(range(10), total=10):
