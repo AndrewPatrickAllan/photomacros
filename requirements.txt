@@ -14,4 +14,7 @@ python-dotenv
 scikit-learn
 tqdm
 typer
--e .
+numpydoc
+sphinx_copybutton
+sphinx_design
+sphinx_rtd_theme
