@@ -19,3 +19,4 @@ sphinx_copybutton
 sphinx_design
 sphinx_rtd_theme
 torch 
+torchvision
