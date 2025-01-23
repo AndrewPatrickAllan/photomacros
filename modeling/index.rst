@@ -1,5 +1,5 @@
 .. module:: photomacros
-
+    :noindex:
 .. _modeling:
 
 ================
