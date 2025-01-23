@@ -37,7 +37,7 @@ numpydoc_show_class_members=False
 
 # Set the theme
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+#html_static_path = ['_static']
 coverage_show_missing_items = True
 # Optional: Customize theme options
 html_theme_options = {
