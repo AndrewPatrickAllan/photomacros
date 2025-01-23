@@ -32,9 +32,9 @@ def main(
     Parameters
     ----------
     input_dir : Path, optional
-        Path to the directory containing raw images. Defaults to RAW_DATA_DIR / "food101/images".
+        Path to the directory containing raw images. Defaults to Path/"food101/images".
     output_dir : Path, optional
-        Path to the directory where processed images will be saved. Defaults to PROCESSED_DATA_DIR.
+        Path to the directory where processed images will be saved. Defaults to Path/processed_data_dir.
 
     Returns
     -------

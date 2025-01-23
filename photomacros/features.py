@@ -31,9 +31,9 @@ def main(
     Parameters
     ----------
     input_path : Path, optional
-        The path to the input dataset directory. Defaults to PROCESSED_DATA_DIR.
+        The path to the input dataset directory. Defaults to processed_data_dir.
     output_path : Path, optional
-        The path to the output directory where generated features will be saved. Defaults to PROCESSED_DATA_DIR.
+        The path to the output directory where generated features will be saved. Defaults to processed_data_dir.
 
     Returns
     -------

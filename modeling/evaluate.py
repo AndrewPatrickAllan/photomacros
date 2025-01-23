@@ -74,9 +74,9 @@ def main(
     Main function to evaluate predictions and save the metrics as a JSON file.
     
     Args:
-        predictions_path (Path): Path to the .pt file containing the model's predictions.
-        test_labels_path (Path): Path to the CSV file containing ground truth labels.
-        metrics_output_path (Path): Path to save the evaluation metrics as a JSON file.
+        predictions_path (Path): path to the .pt file containing the model's predictions.
+        test_labels_path (Path): path to the CSV file containing ground truth labels.
+        metrics_output_path (Path): path to save the evaluation metrics as a JSON file.
     
     Outputs:
         Saves the evaluation metrics (accuracy and classification report) to the specified JSON file.
