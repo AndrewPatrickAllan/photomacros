@@ -16,7 +16,7 @@ from loguru import logger
 load_dotenv()
 
 # Paths
-PROJ_ROOT = Path(__file__).resolve().parents[1]
+PROJ_ROOT = '/Users/osmarg/Documents/GitHub/photomacros'
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
 # Define data directories
