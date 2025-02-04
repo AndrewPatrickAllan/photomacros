@@ -3,7 +3,7 @@ import pandas as pd
 import json
 from sklearn.metrics import accuracy_score, classification_report
 from pathlib import Path
-from photomacros.config import PROCESSED_DATA_DIR, REPORTS_DIR
+from photomacros.config import PROCESSED_DATA_DIR, REPORTS_DIR,MODELS_DIR
 
 """
 This script evaluates the model predictions (from predict.py) against ground truth labels
@@ -66,8 +66,8 @@ def evaluate_predictions(predictions, ground_truth_labels):
 
 
 def main(
-    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.pt",  # Default path for predictions file
-    test_labels_path: Path = PROCESSED_DATA_DIR / "test_labels.csv",      # Default path for test labels CSV
+    predictions_path: Path = MODELS_DIR/ "test_predictions.pt",  # Default path for predictions file
+    test_labels_path: Path = MODELS_DIR / "test_labels.csv",      # Default path for test labels CSV
     metrics_output_path: Path = REPORTS_DIR / "metrics.json"             # Default path to save the metrics JSON
 ):
     """

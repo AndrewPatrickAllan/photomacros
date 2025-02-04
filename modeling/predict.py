@@ -3,79 +3,87 @@ import pandas as pd
 import typer
 from loguru import logger
 from tqdm import tqdm
+import numpy as np
 
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, test_data_path, BATCH_SIZE
+# imported ourselves --------
+import torch
+from torch.utils.data import DataLoader
+from train import load_data, get_model_architecture # Importing own existing load_data function from train.py
+# from torchvision import datasets, transforms
+# import config
+# from photomacros import dataset
+# import random
+# -------------------
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE
 
-print(PROCESSED_DATA_DIR)
+print (PROCESSED_DATA_DIR)
 app = typer.Typer()
 
 
 
-# Imported ourselves --------
-import torch
-from torch.utils.data import DataLoader
-from modeling.train import load_data, get_model_architecture  # Importing own existing load_data function from train.py
-# -------------------
+
 
 
 def perform_inference(
     model_path: Path,
     test_data_path: Path,
     predictions_path: Path,
-    batch_size: int = 5
+    batch_size: int = 32
 ):
     """
     Perform inference on the test dataset using a trained model and save predictions to a file.
 
-    :param model_path: Path
-        Path to the trained model file (.pkl or .pth).
-    :param test_data_path: Path
-        Path to the saved test dataset.
-    :param predictions_path: Path
-        Path to save the predictions.
-    :param batch_size: int, optional (default=5)
-        Batch size for the DataLoader.
-
-    :return: None
-        Saves predictions to the specified path.
+    Args:
+        model_path (Path): Path to the trained model file (.pkl or .pth).
+        test_data_path (Path): Path to the saved test dataset.
+        predictions_path (Path): Path to save the predictions.
+        batch_size (int): Batch size for DataLoader.
     """
-    # Step 1: Determine the number of classes
-    print('LINE 41', MODELS_DIR)
+    logger.info(f"Loading number of classes from {MODELS_DIR}/num_classes.txt...")
     with open(MODELS_DIR / "num_classes.txt", "r") as f:
         num_classes = int(f.read().strip())
 
-    # Step 2: Initialize the model architecture
-    logger.info("Initializing the model architecture...")
+    # Initialize the model
+    logger.info("Initializing model architecture...")
     model = get_model_architecture(IMAGE_SIZE, num_classes)
 
-    # Step 3: Load the trained model
+    # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
-    model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-    print('LINE 52', model_path)
-
-    model.eval()  # Set the model to evaluation mode
+    model.load_state_dict(torch.load(model_path, map_location="cpu"))
+    model.eval()
+    
     logger.success("Model loaded successfully.")
 
-    # Step 4: Load the test dataset
+    # Load test dataset
     logger.info(f"Loading test dataset from {test_data_path}...")
-    test_dataset = torch.load(test_data_path)
+    test_data = torch.load(test_data_path)
+    
+    # Ensure dataset structure is correct
+    if isinstance(test_data, torch.utils.data.Dataset):
+        test_dataset = test_data
+    elif isinstance(test_data, dict) and "images" in test_data and "labels" in test_data:
+        test_dataset = TensorDataset(test_data["images"], test_data["labels"])
+    else:
+        raise ValueError("Invalid test dataset format!")
+
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     logger.success("Test dataset loaded successfully.")
 
-    # Step 5: Perform inference
-    logger.info("Performing inference on the test dataset...")
+    # Perform inference
+    logger.info("Performing inference...")
     predictions = []
-
-    with torch.no_grad():  # Disable gradient computation for inference
-        for images, labels in test_loader:  # Only images are needed during inference
+    with torch.no_grad():
+        for images, _ in tqdm(test_loader, desc="Predicting"):
             outputs = model(images)
             predicted_classes = outputs.argmax(dim=1)  # Get class predictions
             predictions.extend(predicted_classes.cpu().numpy())
 
-    # Step 6: Save predictions
+    # Save predictions
     logger.info(f"Saving predictions to {predictions_path}...")
-    torch.save(predictions, predictions_path)
-    logger.success(f"Predictions saved to {predictions_path}.")
+    torch.save(np.array(predictions), predictions_path)  # Save as NumPy array
+    logger.success(f"Predictions saved successfully to {predictions_path}.")
+
+
 
 def save_test_labels(
     predictions,
@@ -85,54 +93,45 @@ def save_test_labels(
     """
     Save predictions and corresponding labels to a file.
 
-    :param predictions: list
-        List of predicted labels.
-    :param test_data_path: Path
-        Path to the test dataset file.
-    :param output_path: Path
-        Path to save the labeled predictions.
-
-    :return: None
-        Saves a CSV file with columns: image, ground_truth_label, predicted_label.
+    Args:
+        predictions (list): List of predicted labels.
+        test_data_path (Path): Path to the test dataset file.
+        output_path (Path): Path to save the labeled predictions.
     """
     logger.info(f"Loading test dataset from {test_data_path}...")
-    test_dataset = torch.load(test_data_path)
+    test_data = torch.load(test_data_path)
 
-    logger.info("Creating DataFrame with predictions and ground truth labels...")
-    test_labels = [label for _, label in test_dataset]
-    test_images = [f"Image_{i}" for i in range(len(test_labels))]  # Placeholder image IDs
+    # Ensure dataset format
+    if isinstance(test_data, torch.utils.data.Dataset):
+        test_labels = [label for _, label in test_data]
+    elif isinstance(test_data, dict) and "labels" in test_data:
+        test_labels = test_data["labels"].tolist()
+    else:
+        raise ValueError("Invalid dataset format!")
 
+    # Create DataFrame
+    test_images = [f"Image_{i}" for i in range(len(test_labels))]
     test_df = pd.DataFrame({
         "image": test_images,
         "ground_truth_label": test_labels,
         "predicted_label": predictions
     })
 
+    # Save CSV
     logger.info(f"Saving labeled predictions to {output_path}...")
     test_df.to_csv(output_path, index=False)
     logger.success(f"Labeled predictions saved to {output_path}.")
 
+
 @app.command()
 def main(
     model_path: Path = MODELS_DIR / "model.pkl",
-    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.pt",
-    test_data_path: Path = test_data_path,
-    test_labels_output_path: Path = PROCESSED_DATA_DIR / "test_labels.csv"
+    predictions_path: Path = MODELS_DIR / "test_predictions.pt",
+    test_data_path: Path = MODELS_DIR/ "test_data.pt",
+    test_labels_output_path: Path = MODELS_DIR / "test_labels.csv"
 ):
     """
     Main function to perform inference and save predictions with labels.
-
-    :param model_path: Path, optional
-        Path to the trained model file.
-    :param predictions_path: Path, optional
-        Path to save predictions (default: test_predictions.pt).
-    :param test_data_path: Path, optional
-        Path to the test dataset.
-    :param test_labels_output_path: Path, optional
-        Path to save the CSV file with test labels and predictions.
-
-    :return: None
-        Performs inference and saves results.
     """
     logger.info("Starting inference process...")
     perform_inference(
@@ -149,6 +148,7 @@ def main(
     logger.info(f"Saving predictions with corresponding labels to {test_labels_output_path}...")
     save_test_labels(predictions, test_data_path, test_labels_output_path)
     logger.success("Inference process completed.")
+
 
 if __name__ == "__main__":
     app()

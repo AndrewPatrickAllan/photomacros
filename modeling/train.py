@@ -22,7 +22,7 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS, test_data_path
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
 # Additional imports for PyTorch and data handling
 import torch
@@ -187,6 +187,12 @@ def train_model(train_loader):
     """
     num_classes = len(train_loader.dataset.dataset.classes)
     model = get_model_architecture(IMAGE_SIZE, num_classes)
+    class_names = train_loader.dataset.dataset.classes  # Extract class names
+    with open(MODELS_DIR / "class_names.txt", "w") as f:
+        for name in class_names:
+            f.write(name + "\n")
+
+    print("Class names saved:", class_names)
 
     # Save number of classes for later use
     with open(MODELS_DIR / "num_classes.txt", "w") as f:
@@ -194,23 +200,22 @@ def train_model(train_loader):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
-    scaler = GradScaler()
+
 
     model.train()
     for epoch in range(NUM_EPOCHS):
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
         for batch_idx, (images, labels) in progress_bar:
             optimizer.zero_grad()
-            with autocast(dtype=torch.float16):
-                outputs = model(images)
-                loss = criterion(outputs, labels)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            
+        
             progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
 
     return model
-
 
 @app.command()
 def main(
