@@ -22,6 +22,9 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
 # Additional imports for PyTorch and data handling
@@ -39,25 +42,25 @@ app = typer.Typer()
 random.seed(46)
 
 
-class CheckpointModule(torch.nn.Module):
-    """
-    Wrapper class for implementing gradient checkpointing on a module.
+# class CheckpointModule(torch.nn.Module):
+#     """
+#     Wrapper class for implementing gradient checkpointing on a module.
 
-    Args:
-        module (torch.nn.Module): PyTorch module to be wrapped.
-    """
-    def __init__(self, module):
-        super(CheckpointModule, self).__init__()
-        self.module = module
+#     Args:
+#         module (torch.nn.Module): PyTorch module to be wrapped.
+#     """
+#     def __init__(self, module):
+#         super(CheckpointModule, self).__init__()
+#         self.module = module
 
-    def forward(self, *inputs):
-        """
-        Forward pass using gradient checkpointing.
+#     def forward(self, *inputs):
+#         """
+#         Forward pass using gradient checkpointing.
 
-        Args:
-            inputs: Input tensors for the forward pass.
-        """
-        return checkpoint(self.module, *inputs)
+#         Args:
+#             inputs: Input tensors for the forward pass.
+#         """
+#         return checkpoint(self.module, *inputs)
 
 
 def get_augmentation_transforms():
@@ -204,16 +207,18 @@ def train_model(train_loader):
 
     model.train()
     for epoch in range(NUM_EPOCHS):
-        progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
-        for batch_idx, (images, labels) in progress_bar:
+        for images, labels in train_loader:
+        # progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
+        # for batch_idx, (images, labels) in progress_bar:
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
-        
-            progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
+            # progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
+        print(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")#, Loss: {loss.item():.4f}")
+
+    print("Training complete")
 
     return model
 

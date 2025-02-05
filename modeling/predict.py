@@ -8,13 +8,18 @@ import numpy as np
 # imported ourselves --------
 import torch
 from torch.utils.data import DataLoader
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE
 from train import load_data, get_model_architecture # Importing own existing load_data function from train.py
 # from torchvision import datasets, transforms
 # import config
 # from photomacros import dataset
 # import random
 # -------------------
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE
+
 
 print (PROCESSED_DATA_DIR)
 app = typer.Typer()
@@ -50,22 +55,20 @@ def perform_inference(
     # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
     model.load_state_dict(torch.load(model_path, map_location="cpu"))
-    model.eval()
-    
+    model.eval() # Set the model to evaluation mode
     logger.success("Model loaded successfully.")
 
     # Load test dataset
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_data = torch.load(test_data_path)
-    
-    # Ensure dataset structure is correct
-    if isinstance(test_data, torch.utils.data.Dataset):
-        test_dataset = test_data
-    elif isinstance(test_data, dict) and "images" in test_data and "labels" in test_data:
-        test_dataset = TensorDataset(test_data["images"], test_data["labels"])
-    else:
-        raise ValueError("Invalid test dataset format!")
-
+    test_dataset = test_data
+    # # Ensure dataset structure is correct
+    # if isinstance(test_data, torch.utils.data.Dataset):
+    #     test_dataset = test_data
+    # elif isinstance(test_data, dict) and "images" in test_data and "labels" in test_data:
+    #     test_dataset = TensorDataset(test_data["images"], test_data["labels"])
+    # else:
+    #     raise ValueError("Invalid test dataset format!")
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     logger.success("Test dataset loaded successfully.")
 
@@ -73,7 +76,7 @@ def perform_inference(
     logger.info("Performing inference...")
     predictions = []
     with torch.no_grad():
-        for images, _ in tqdm(test_loader, desc="Predicting"):
+        for images, labels in test_loader:  # Load images and labels
             outputs = model(images)
             predicted_classes = outputs.argmax(dim=1)  # Get class predictions
             predictions.extend(predicted_classes.cpu().numpy())
@@ -101,20 +104,26 @@ def save_test_labels(
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_data = torch.load(test_data_path)
 
-    # Ensure dataset format
-    if isinstance(test_data, torch.utils.data.Dataset):
-        test_labels = [label for _, label in test_data]
-    elif isinstance(test_data, dict) and "labels" in test_data:
-        test_labels = test_data["labels"].tolist()
-    else:
-        raise ValueError("Invalid dataset format!")
+    # # Ensure dataset format
+    # if isinstance(test_data, torch.utils.data.Dataset):
+    #     test_labels = [label for _, label in test_data]
+    # elif isinstance(test_data, dict) and "labels" in test_data:
+    #     test_labels = test_data["labels"].tolist()
+    # else:
+    #     raise ValueError("Invalid dataset format!")
 
-    # Create DataFrame
-    test_images = [f"Image_{i}" for i in range(len(test_labels))]
+    # # Create DataFrame
+    # test_images = [f"Image_{i}" for i in range(len(test_labels))]
+    # test_df = pd.DataFrame({
+    #     "image": test_images,
+    #     "ground_truth_label": test_labels,
+    #     "predicted_label": predictions
+    # })
+        # Assuming test_data contains images and labels (image, label pairs)
+    # predictions should match the labels from the test_data
     test_df = pd.DataFrame({
-        "image": test_images,
-        "ground_truth_label": test_labels,
-        "predicted_label": predictions
+        'image': [item[0] for item in test_data],
+        'predicted_label': predictions
     })
 
     # Save CSV
@@ -152,3 +161,11 @@ def main(
 
 if __name__ == "__main__":
     app()
+
+
+
+
+
+
+
+    

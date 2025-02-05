@@ -3,6 +3,9 @@ import pandas as pd
 import json
 from sklearn.metrics import accuracy_score, classification_report
 from pathlib import Path
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from photomacros.config import PROCESSED_DATA_DIR, REPORTS_DIR,MODELS_DIR
 
 """
@@ -54,6 +57,10 @@ def evaluate_predictions(predictions, ground_truth_labels):
     """
     # Extract the true labels from the DataFrame
     y_true = ground_truth_labels["ground_truth_label"].values  # Ground truth labels as a numpy array
+    # print('y_true_new:',y_true)
+    # y_true = ground_truth_labels["label"].values  # Ground truth labels as a numpy array, WILL GET KeyError: 'label'
+    # print('y_true_old:',y_true)
+
     y_pred = predictions  # Predicted labels (assumed to be class indices)
 
     # Calculate overall accuracy
