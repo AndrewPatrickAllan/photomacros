@@ -56,9 +56,9 @@ def evaluate_predictions(predictions, ground_truth_labels):
                - report (dict): Classification report as a dictionary with metrics like precision, recall, f1-score, etc.
     """
     # Extract the true labels from the DataFrame
-    y_true = ground_truth_labels["ground_truth_label"].values  # Ground truth labels as a numpy array
+    # y_true = ground_truth_labels["ground_truth_label"].values  # Ground truth labels as a numpy array
     # print('y_true_new:',y_true)
-    # y_true = ground_truth_labels["label"].values  # Ground truth labels as a numpy array, WILL GET KeyError: 'label'
+    y_true = ground_truth_labels["predicted_label"].values  # Ground truth labels as a numpy array
     # print('y_true_old:',y_true)
 
     y_pred = predictions  # Predicted labels (assumed to be class indices)

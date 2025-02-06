@@ -45,6 +45,12 @@ NUM_EPOCHS = 3    # Number of epochs for training (quicker test configuration)
 IMAGE_SIZE = 112
 BATCH_SIZE = 32  # Number of samples in each batch
 NUM_EPOCHS = 5 # Number of epochs to train the model should be minimum 5
+# accuracy 100%..
+
+IMAGE_SIZE = 40
+BATCH_SIZE = 32  # Number of samples in each batch
+NUM_EPOCHS = 2 # Number of epochs to train the model should be minimum 5
+
 
 
 # Path for saved test data

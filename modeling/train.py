@@ -63,6 +63,8 @@ random.seed(46)
 #         return checkpoint(self.module, *inputs)
 
 
+
+
 def get_augmentation_transforms():
     """
     Define and return data augmentation transformations for training.
@@ -71,13 +73,17 @@ def get_augmentation_transforms():
         torchvision.transforms.Compose: A sequence of augmentations to apply to training data.
     """
     return transforms.Compose([
-        transforms.RandomRotation(degrees=15),           # Rotate images by up to 15 degrees
-        transforms.RandomHorizontalFlip(p=0.5),          # Flip images horizontally with a 50% chance
-        transforms.RandomResizedCrop(IMAGE_SIZE, scale=(0.8, 1.0)),  # Randomly crop and resize
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),  # Adjust image color properties
-        transforms.ToTensor(),                           # Convert image to tensor
-        transforms.Normalize(mean=MEAN, std=STD)         # Normalize image tensor
+        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),  # Resize first
+        transforms.RandomHorizontalFlip(p=0.5),  # Flipping is useful
+        transforms.RandomRotation(degrees=10),  # Slightly less rotation to avoid weird orientations
+        transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),  # Small translations help
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.3),  # Enhances sharpness slightly
+        transforms.ToTensor(),
+        transforms.Normalize(mean=MEAN, std=STD)
     ])
+
+
 
 
 def get_validation_transforms():
@@ -88,57 +94,104 @@ def get_validation_transforms():
         torchvision.transforms.Compose: Transformations to apply to validation and test data.
     """
     return transforms.Compose([
-        transforms.Resize(IMAGE_SIZE),                  # Resize image to the specified size
-        transforms.ToTensor(),                          # Convert image to tensor
-        transforms.Normalize(mean=MEAN, std=STD)        # Normalize image tensor
+        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),  # Resize image to the specified size
+        transforms.ToTensor(),                        # Convert image to tensor
+        transforms.Normalize(mean=MEAN, std=STD)      # Normalize image tensor
     ])
 
 
+
+# def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+#     """
+#     Split the dataset into training, validation, and testing sets.
+
+#     Args:
+#         input_data_dir (Path): Path to the dataset directory.
+#         train_ratio (float): Fraction of the dataset for training.
+#         val_ratio (float): Fraction of the dataset for validation.
+#         test_ratio (float): Fraction of the dataset for testing.
+
+#     Returns:
+#         tuple: Training, validation, and testing datasets.
+#     """
+#     # Load the dataset WITHOUT transforms
+#     dataset = datasets.ImageFolder(input_data_dir, transform=None)
+
+#     # Compute sizes for splits
+#     dataset_size = len(dataset)
+#     train_size = int(train_ratio * dataset_size)
+#     val_size = int(val_ratio * dataset_size)
+#     test_size = dataset_size - train_size - val_size
+
+#     # Split the dataset into indices
+#     train_indices, val_indices, test_indices = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+
+#     return train_indices, val_indices, test_indices
+
+
+
+
+# def load_data(input_data_dir):
+#     """
+#     Load the dataset, apply transformations, and save test data for inference.
+
+#     Args:
+#         input_data_dir (Path): Path to the input dataset directory.
+
+#     Returns:
+#         tuple: DataLoaders for training, validation, and testing datasets.
+#     """
+#     train_indices, val_indices, test_indices = split_data(input_data_dir)
+
+#     # Apply transformations
+#     train_dataset = datasets.ImageFolder(input_data_dir, transform=get_augmentation_transforms())
+#     val_dataset = datasets.ImageFolder(input_data_dir, transform=get_validation_transforms())
+#     test_dataset = datasets.ImageFolder(input_data_dir, transform=get_validation_transforms())
+
+#     # Use the precomputed splits
+#     train_dataset = torch.utils.data.Subset(train_dataset, train_indices)
+#     val_dataset = torch.utils.data.Subset(val_dataset, val_indices)
+#     test_dataset = torch.utils.data.Subset(test_dataset, test_indices)
+
+#     # Save datasets for future use
+#     torch.save(test_dataset, MODELS_DIR / "test_data.pt")
+#     torch.save(val_dataset, MODELS_DIR / "val_data.pt")
+#     torch.save(train_dataset, MODELS_DIR / "train_data.pt")
+#     logger.success(f"Datasets saved to {MODELS_DIR}")
+
+#     # Create DataLoaders
+#     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+#     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+#     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+#     return train_loader, val_loader, test_loader
+
+
 def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
-    """
-    Split the dataset into training, validation, and testing sets.
+    dataset = datasets.ImageFolder(input_data_dir)  # Load dataset first
 
-    Args:
-        input_data_dir (Path): Path to the dataset directory.
-        train_ratio (float): Fraction of the dataset for training.
-        val_ratio (float): Fraction of the dataset for validation.
-        test_ratio (float): Fraction of the dataset for testing.
-
-    Returns:
-        tuple: Training, validation, and testing datasets.
-    """
-    dataset = datasets.ImageFolder(input_data_dir, transform=None)
-
-    # Compute sizes for splits
+    # Compute split sizes
     dataset_size = len(dataset)
     train_size = int(train_ratio * dataset_size)
     val_size = int(val_ratio * dataset_size)
     test_size = dataset_size - train_size - val_size
 
-    # Split the dataset
+    # Split dataset into subsets
     train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
 
     return train_dataset, val_dataset, test_dataset
 
 
 def load_data(input_data_dir):
-    """
-    Load the dataset, apply transformations, and save test data for inference.
-
-    Args:
-        input_data_dir (Path): Path to the input dataset directory.
-
-    Returns:
-        tuple: DataLoaders for training, validation, and testing datasets.
-    """
+    #  Get datasets instead of indices
     train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
 
-    # Apply transformations
+    # Apply transformations **before** using DataLoader
     train_dataset.dataset.transform = get_augmentation_transforms()
     val_dataset.dataset.transform = get_validation_transforms()
     test_dataset.dataset.transform = get_validation_transforms()
 
-    # Save datasets for future use
+    # Save datasets
     torch.save(test_dataset, MODELS_DIR / "test_data.pt")
     torch.save(val_dataset, MODELS_DIR / "val_data.pt")
     torch.save(train_dataset, MODELS_DIR / "train_data.pt")
@@ -150,6 +203,8 @@ def load_data(input_data_dir):
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     return train_loader, val_loader, test_loader
+
+
 
 
 def get_model_architecture(image_size, num_classes):
@@ -194,7 +249,6 @@ def train_model(train_loader):
     with open(MODELS_DIR / "class_names.txt", "w") as f:
         for name in class_names:
             f.write(name + "\n")
-
     print("Class names saved:", class_names)
 
     # Save number of classes for later use
@@ -204,18 +258,17 @@ def train_model(train_loader):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
 
-
     model.train()
     for epoch in range(NUM_EPOCHS):
-        for images, labels in train_loader:
-        # progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
-        # for batch_idx, (images, labels) in progress_bar:
+        # for images, labels in train_loader:
+        progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
+        for batch_idx, (images, labels) in progress_bar:
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            # progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
+            progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
         print(f"Epoch [{epoch+1}/{NUM_EPOCHS}]")#, Loss: {loss.item():.4f}")
 
     print("Training complete")
