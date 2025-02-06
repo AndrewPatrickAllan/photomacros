@@ -39,27 +39,6 @@ app = typer.Typer()
 random.seed(46)
 
 
-class CheckpointModule(torch.nn.Module):
-    """
-    Wrapper class for implementing gradient checkpointing on a module.
-
-    Args:
-        module (torch.nn.Module): PyTorch module to be wrapped.
-    """
-    def __init__(self, module):
-        super(CheckpointModule, self).__init__()
-        self.module = module
-
-    def forward(self, *inputs):
-        """
-        Forward pass using gradient checkpointing.
-
-        Args:
-            inputs: Input tensors for the forward pass.
-        """
-        return checkpoint(self.module, *inputs)
-
-
 def get_augmentation_transforms():
     """
     Define and return data augmentation transformations for training.
@@ -173,7 +152,52 @@ def get_model_architecture(image_size, num_classes):
         torch.nn.Linear(128, num_classes)
     )
     return model
+    # """
+    # Creates and returns a CNN classifier model.
 
+    # Args:
+    #     image_size (int): Input image size (assumes square images).
+    #     num_classes (int): Number of output classes.
+
+    # Returns:
+    #     nn.Module: CNN classifier model.
+    # """
+    # class CNNClassifier(torch.nn.Module):
+    #     def __init__(self):
+    #         super(CNNClassifier, self).__init__()
+    #         self.conv_layers = torch.nn.Sequential(
+    #             torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+    #             torch.nn.ReLU(),
+    #             torch.nn.BatchNorm2d(32),
+    #             torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    #             torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    #             torch.nn.ReLU(),
+    #             torch.nn.BatchNorm2d(64),
+    #             torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    #             torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  
+    #             torch.nn.ReLU(),
+    #             torch.nn.BatchNorm2d(128),
+    #             torch.nn.MaxPool2d(kernel_size=2, stride=2)
+    #         )
+
+    #         # Calculate feature map size after convolutions
+    #         reduced_size = image_size // 8  # Since 3 max-pool layers divide by 2 each
+    #         self.fc_layers = torch.nn.Sequential(
+    #             torch.nn.Flatten(),
+    #             torch.nn.Linear(128 * reduced_size * reduced_size, 256),
+    #             torch.nn.ReLU(),
+    #             torch.nn.Dropout(0.5),
+    #             torch.nn.Linear(256, num_classes)
+    #         )
+
+    #     def forward(self, x):
+    #         x = self.conv_layers(x)
+    #         x = self.fc_layers(x)
+    #         return x
+
+    # return CNNClassifier()
 
 def train_model(train_loader):
     """
@@ -220,7 +244,7 @@ def train_model(train_loader):
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
-    model_path: Path = MODELS_DIR / "model.pkl"
+    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs.pkl"
 ):
     """
     Main function to train the model and save the trained model.
@@ -230,6 +254,7 @@ def main(
         model_path (Path): Path to save the trained model.
     """
     logger.info("Starting training process...")
+    print (f"model_{NUM_EPOCHS}epochs.pkl")
     train_loader, val_loader, test_loader = load_data(input_path)
     trained_model = train_model(train_loader)
     torch.save(trained_model.state_dict(), model_path)
