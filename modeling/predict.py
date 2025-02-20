@@ -74,14 +74,14 @@ def perform_inference(
             print (f"Labels: {labels}")
             #print(f"Raw model outputs: {outputs[:5]}")  # Print first 5 predictions
             predicted_classes = outputs.argmax(dim=1)
-            print(f"Predicted classes: {predicted_classes[:10]}")
+            print(f"Predicted classes: {predicted_classes[:31]}")
                     # Compare predictions with the labels
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
             predictions.extend(predicted_classes.cpu().numpy())
             #print(f"Predicted classes: {predictions}")
     accuracy = correct / total
-    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Accuracy for model_{NUM_EPOCHS}epochs.pkl : {accuracy:.4f}")
 
 
     # Save predictions

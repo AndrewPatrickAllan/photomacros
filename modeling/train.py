@@ -84,7 +84,7 @@ def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
         tuple: Training, validation, and testing datasets.
     """
     dataset = datasets.ImageFolder(input_data_dir, transform=None)
-
+    torch.manual_seed(42) 
     # Compute sizes for splits
     dataset_size = len(dataset)
     train_size = int(train_ratio * dataset_size)

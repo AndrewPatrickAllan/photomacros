@@ -36,7 +36,7 @@ STD = [0.229, 0.224, 0.225]   # Standard deviation values for image normalizatio
 
 # Model training constants
 BATCH_SIZE = 32     # Number of samples in each batch (quicker test configuration)
-NUM_EPOCHS = 7   # Number of epochs for training (quicker test configuration)
+NUM_EPOCHS = 20  # Number of epochs for training (quicker test configuration)
 
 # Path for saved test data
 #test_data_path = MODELS_DIR / "test_data.pt"  # Path to saved test dataset for inference
