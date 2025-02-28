@@ -140,7 +140,7 @@ def save_test_labels(
 
 @app.command()
 def main(
-    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs.pkl",
+    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop.pkl",
     predictions_path: Path = MODELS_DIR / "test_predictions.pt",
     test_data_path: Path = MODELS_DIR/ "test_data.pt",
     test_labels_output_path: Path = MODELS_DIR / "test_labels.csv"

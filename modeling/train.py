@@ -96,7 +96,30 @@ def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
 
     return train_dataset, val_dataset, test_dataset
 
+def evaluate_validation_loss(val_loader, model, criterion):
+    """
+    Evaluate the model's loss on the validation dataset.
 
+    Args:
+        val_loader (DataLoader): DataLoader for the validation dataset.
+        model (torch.nn.Module): The trained model.
+        criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
+
+    Returns:
+        float: Average validation loss.
+    """
+    model.eval()  # Set model to evaluation mode (disables dropout, batchnorm updates)
+    val_loss = 0.0
+    num_batches = 0
+
+    with torch.no_grad():  # No need to compute gradients
+        for images, labels in val_loader:
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()  # Accumulate loss per batch
+            num_batches += 1
+
+    return val_loss / num_batches if num_batches > 0 else 0  # Return average loss per batch
 def load_data(input_data_dir):
     """
     Load the dataset, apply transformations, and save test data for inference.
@@ -139,67 +162,64 @@ def get_model_architecture(image_size, num_classes):
     Returns:
         torch.nn.Sequential: Model architecture.
     """
+    # model = torch.nn.Sequential(
+    #     torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    #     torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    #     torch.nn.Flatten(),
+    #     torch.nn.Linear(64 * (image_size // 4) * (image_size // 4), 128),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(128, num_classes)
+    # )
+    # return model
     model = torch.nn.Sequential(
-        torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-        torch.nn.ReLU(),
-        torch.nn.MaxPool2d(kernel_size=2, stride=2),
-        torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-        torch.nn.ReLU(),
-        torch.nn.MaxPool2d(kernel_size=2, stride=2),
-        torch.nn.Flatten(),
-        torch.nn.Linear(64 * (image_size // 4) * (image_size // 4), 128),
-        torch.nn.ReLU(),
-        torch.nn.Linear(128, num_classes)
-    )
+    # First Convolutional Block
+    torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+    torch.nn.BatchNorm2d(32),  # Batch normalization
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    # Second Convolutional Block
+    torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+    torch.nn.BatchNorm2d(64),  # Batch normalization
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    # Third Convolutional Block
+    torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+    torch.nn.BatchNorm2d(128),  # Batch normalization
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    # Fourth Convolutional Block
+    torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+    torch.nn.BatchNorm2d(256),  # Batch normalization
+    torch.nn.ReLU(),
+    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    # Global Average Pooling
+    torch.nn.AdaptiveAvgPool2d((1, 1)),  # Reduces to 1x1 feature map for each channel
+
+    # Flattening
+    torch.nn.Flatten(),
+
+    # Fully Connected Layer
+    torch.nn.Linear(256, 128),
+    torch.nn.ReLU(),
+    torch.nn.Dropout(0.3),  # Dropout to prevent overfitting
+
+    # Output Layer
+    torch.nn.Linear(128, num_classes)
+)
+
     return model
-    # """
-    # Creates and returns a CNN classifier model.
 
-    # Args:
-    #     image_size (int): Input image size (assumes square images).
-    #     num_classes (int): Number of output classes.
 
-    # Returns:
-    #     nn.Module: CNN classifier model.
-    # """
-    # class CNNClassifier(torch.nn.Module):
-    #     def __init__(self):
-    #         super(CNNClassifier, self).__init__()
-    #         self.conv_layers = torch.nn.Sequential(
-    #             torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-    #             torch.nn.ReLU(),
-    #             torch.nn.BatchNorm2d(32),
-    #             torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    #             torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    #             torch.nn.ReLU(),
-    #             torch.nn.BatchNorm2d(64),
-    #             torch.nn.MaxPool2d(kernel_size=2, stride=2),
-
-    #             torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  
-    #             torch.nn.ReLU(),
-    #             torch.nn.BatchNorm2d(128),
-    #             torch.nn.MaxPool2d(kernel_size=2, stride=2)
-    #         )
-
-    #         # Calculate feature map size after convolutions
-    #         reduced_size = image_size // 8  # Since 3 max-pool layers divide by 2 each
-    #         self.fc_layers = torch.nn.Sequential(
-    #             torch.nn.Flatten(),
-    #             torch.nn.Linear(128 * reduced_size * reduced_size, 256),
-    #             torch.nn.ReLU(),
-    #             torch.nn.Dropout(0.5),
-    #             torch.nn.Linear(256, num_classes)
-    #         )
-
-    #     def forward(self, x):
-    #         x = self.conv_layers(x)
-    #         x = self.fc_layers(x)
-    #         return x
-
-    # return CNNClassifier()
-
-def train_model(train_loader):
+def train_model(train_loader,val_loader):
     """
     Train the model using the training DataLoader.
 
@@ -216,35 +236,66 @@ def train_model(train_loader):
         for name in class_names:
             f.write(name + "\n")
 
-    print("Class names saved:", class_names)
+    #print("Class names saved:", class_names)
 
     # Save number of classes for later use
     with open(MODELS_DIR / "num_classes.txt", "w") as f:
         f.write(str(num_classes))
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4) #better optimizer
     criterion = torch.nn.CrossEntropyLoss()
+    # Learning rate scheduler: Reduce LR if validation loss stops improving
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
 
+    best_val_loss = float('inf')
+    patience = 5  # Stop training if no improvement after 'patience' epochs
+    patience_counter = 0
+    best_model_state = None
 
     model.train()
     for epoch in range(NUM_EPOCHS):
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
+        train_loss = 0.0
+
         for batch_idx, (images, labels) in progress_bar:
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
-        
-            progress_bar.set_postfix({"Loss": f"{loss.item():.4f}"})
 
+            train_loss += loss.item()
+            progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
+
+        # Compute validation loss at the end of each epoch
+        val_loss = evaluate_validation_loss(val_loader, model, criterion)
+        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Validation Loss = {val_loss:.4f}")
+
+        # Update learning rate scheduler based on validation loss
+        scheduler.step(val_loss)
+
+        # Early stopping logic
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0  # Reset patience counter
+            best_model_state = model.state_dict()  # Save best model
+            logger.info("Validation loss improved. Model saved.")
+        else:
+            patience_counter += 1
+            logger.info(f"No improvement for {patience_counter} epochs.")
+
+        if patience_counter >= patience:
+            logger.info("Early stopping triggered. Training stopped.")
+            break  # Stop training if no improvement for 'patience' epochs
+
+    # Load best model state before returning
+    model.load_state_dict(best_model_state)
     return model
-
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
-    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs.pkl"
+    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop.pkl"
 ):
     """
     Main function to train the model and save the trained model.
@@ -254,9 +305,9 @@ def main(
         model_path (Path): Path to save the trained model.
     """
     logger.info("Starting training process...")
-    print (f"model_{NUM_EPOCHS}epochs.pkl")
+    print (f"model_{NUM_EPOCHS}epochs_BetterModel_LRScheduler_Earlystop.pkl")
     train_loader, val_loader, test_loader = load_data(input_path)
-    trained_model = train_model(train_loader)
+    trained_model = train_model(train_loader,val_loader)
     torch.save(trained_model.state_dict(), model_path)
     logger.success(f"Model saved to {model_path}.")
 
