@@ -11,6 +11,9 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from loguru import logger
+import torch
+
+
 
 # Load environment variables from a .env file, if it exists
 load_dotenv()
@@ -18,6 +21,8 @@ load_dotenv()
 # Paths
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
+
+
 
 # Define data directories
 DATA_DIR = Path("~/Documents/GitHub/data").expanduser()  # Path to the main data directory

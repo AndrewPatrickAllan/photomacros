@@ -17,12 +17,17 @@ Modules:
     - photomacros: Custom dataset utilities.
 """
 
+import sys
+import os
+sys.path.append(os.path.abspath('/Users/allan/Documents/GitHub/photomacros'))
+
+
 from pathlib import Path
 import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS 
 
 # Additional imports for PyTorch and data handling
 import torch
@@ -32,11 +37,16 @@ import random
 from torch.utils.checkpoint import checkpoint
 from torch.cuda.amp import GradScaler, autocast
 
+
+
+
+# Set device globally
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+print(f"Using device: {device}")
+
 # Typer CLI application
 app = typer.Typer()
 
-# Set random seed for reproducibility
-random.seed(46)
 
 
 def get_augmentation_transforms():
@@ -114,12 +124,16 @@ def evaluate_validation_loss(val_loader, model, criterion):
 
     with torch.no_grad():  # No need to compute gradients
         for images, labels in val_loader:
+            images, labels = images.to(device, dtype=torch.float32), labels.to(device)  # Move data to GPU
+
             outputs = model(images)
             loss = criterion(outputs, labels)
             val_loss += loss.item()  # Accumulate loss per batch
             num_batches += 1
 
     return val_loss / num_batches if num_batches > 0 else 0  # Return average loss per batch
+    
+    
 def load_data(input_data_dir):
     """
     Load the dataset, apply transformations, and save test data for inference.
@@ -144,9 +158,10 @@ def load_data(input_data_dir):
     logger.success(f"Datasets saved to {MODELS_DIR}")
 
     # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    num_workers=4  
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers, pin_memory=False)  # we could increase to num_workers=8 if enough ram
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers, pin_memory=False)   # we could increase to num_workers=8 if enough ram
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers, pin_memory=False)   # we could increase to num_workers=8 if enough ram
 
     return train_loader, val_loader, test_loader
 
@@ -213,7 +228,11 @@ def get_model_architecture(image_size, num_classes):
 
     # Output Layer
     torch.nn.Linear(128, num_classes)
-)
+    )
+
+
+    model.to(device)  # Move model to GPU
+
 
     return model
 
@@ -259,6 +278,7 @@ def train_model(train_loader,val_loader):
         train_loss = 0.0
 
         for batch_idx, (images, labels) in progress_bar:
+            images, labels = images.to(device, dtype=torch.float32), labels.to(device)  # Move data to GPU
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)

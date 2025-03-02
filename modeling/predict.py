@@ -17,7 +17,47 @@ from train import load_data, get_model_architecture,get_validation_transforms # 
 from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
 from torchvision import datasets, transforms
 
+
+# Set device globally
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
+
 app = typer.Typer()
+
+
+
+def load_model_into_eval_model( model_path: Path):
+    """
+    Load the trained model and set it to evaluation mode.
+
+    Args:
+        model_path (Path): Path to the trained model file (.pkl or .pth).
+
+    Returns:
+        model.eval(): Trained model set to evaluation mode.
+    """
+   
+
+    logger.info(f"Loading number of classes from {MODELS_DIR}/num_classes.txt...")
+    with open(MODELS_DIR / "num_classes.txt", "r") as f:
+        num_classes = int(f.read().strip())
+
+    # Initialize the model
+    logger.info("Initializing model architecture...")
+    model = get_model_architecture(IMAGE_SIZE, num_classes)
+
+    # Load trained model
+    logger.info(f"Loading trained model from {model_path}...")
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+
+    logger.success("Model loaded successfully.")
+
+    return model 
+
+
 
 
 
@@ -36,20 +76,8 @@ def perform_inference(
         predictions_path (Path): Path to save the predictions.
         batch_size (int): Batch size for DataLoader.
     """
-    logger.info(f"Loading number of classes from {MODELS_DIR}/num_classes.txt...")
-    with open(MODELS_DIR / "num_classes.txt", "r") as f:
-        num_classes = int(f.read().strip())
 
-    # Initialize the model
-    logger.info("Initializing model architecture...")
-    model = get_model_architecture(IMAGE_SIZE, num_classes)
-
-    # Load trained model
-    logger.info(f"Loading trained model from {model_path}...")
-    model.load_state_dict(torch.load(model_path))
-    model.eval()
-    
-    logger.success("Model loaded successfully.")
+    model=load_model_into_eval_model(model_path)
 
     # Load test dataset
     logger.info(f"Loading test dataset from {test_data_path}...")
@@ -57,7 +85,7 @@ def perform_inference(
 
     test_dataset.transform = get_validation_transforms()
 
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=False)
 
     #test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     logger.success("Test dataset loaded successfully.")
@@ -69,6 +97,8 @@ def perform_inference(
     total = 0
     with torch.no_grad():
         for images, labels in tqdm(test_loader, desc="Predicting"):
+            images, labels = images.to(device, dtype=torch.float32), labels.to(device)  # Move data to GPU
+
             #print(f"Image batch shape: {images.shape}")
             outputs = model(images)
             print (f"Labels: {labels}")
