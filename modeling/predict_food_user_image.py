@@ -55,15 +55,15 @@ from pathlib import Path
 from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
 
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/croquettas.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/avocado.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/london_burger.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/burger.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/nachos2.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/guac.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/risotto.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/sushi.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_test_images/pizza.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/croquettas.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/avocado.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/london_burger.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/burger.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/nachos2.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/guac.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/risotto.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/sushi.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/pizza.jpeg")
 
 model_path=Path(MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop.pkl")
 guess=predict_food_user_single_image(aa_test_guac_image_path, model_path)
