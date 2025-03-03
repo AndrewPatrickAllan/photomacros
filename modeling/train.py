@@ -414,38 +414,37 @@ def evaluate_validation_loss(val_loader, model, criterion):
 
 #     return avg_loss, accuracy
 
-def train_model(train_loader,val_loader):
+def train_model(train_loader, val_loader, initial_image_size=224, max_image_size=256, patience=5):
     """
-    Train the model using the training DataLoader.
+    Train the model using the training DataLoader. Increase image size if loss stagnates.
 
     Args:
         train_loader (DataLoader): DataLoader for the training dataset.
+        val_loader (DataLoader): DataLoader for the validation dataset.
+        initial_image_size (int): Initial size of images (default is 224).
+        max_image_size (int): Maximum image size to increase to (default is 256).
+        patience (int): Number of epochs without improvement before increasing image size.
 
     Returns:
-        torch.nn.Sequential: Trained model.
+        torch.nn.Module: Trained model.
     """
-
-# Automatically detect the best device
+    # Automatically detect the best device
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     logger.success(f"Using device: {device}")
 
+    # Model setup
     num_classes = len(train_loader.dataset.dataset.classes)
-    model = get_model_architecture(IMAGE_SIZE, num_classes).to(device)
+    model = get_model_architecture(initial_image_size, num_classes).to(device)
 
     optimizer = torch.optim.Adam(model.classifier.parameters(), lr=0.001)
-    #optimizer = torch.optim.SGD(model.classifier.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-
     criterion = torch.nn.CrossEntropyLoss()
-    # Cosine Annealing LR Scheduler
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode='max',   # Reduce LR when validation loss decreases
-    factor=1/3,   # Reduce LR by a factor of 0.5 (adjust as needed)
-    patience=2,   # Wait for 3 epochs without improvement before reducing
-    )
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=2)
+
     best_val_loss = float('inf')
-    patience = 5
     patience_counter = 0
     best_model_state = None
+    epoch_since_last_improvement = 0
 
     model.train()
     for epoch in range(NUM_EPOCHS):
@@ -460,32 +459,45 @@ def train_model(train_loader,val_loader):
             loss = criterion(outputs, labels)
             loss.backward()
 
-            # Gradient Clipping to prevent exploding gradients
-            #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             train_loss += loss.item()
             progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
 
         avg_val_loss, top1_acc, top5_acc = evaluate_validation_loss(val_loader, model, criterion)
-        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, top1 = {top1_acc} top5_acc = {top5_acc}")
-        scheduler.step(avg_val_loss)  # Update LR according to Cosine Annealing
-        logger.info(f"Updated Learning Rate: {scheduler.get_last_lr()[0]:.6f}")
+        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}")
+        scheduler.step(avg_val_loss)
+
+        # If the validation loss has improved, save the model state
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             patience_counter = 0
             best_model_state = model.state_dict()
             logger.info("Validation loss improved. Model saved.")
+            epoch_since_last_improvement = 0
         else:
             patience_counter += 1
+            epoch_since_last_improvement += 1
             logger.info(f"No improvement for {patience_counter} epochs.")
 
+        # Early stopping based on patience
         if patience_counter >= patience:
             logger.info("Early stopping triggered. Training stopped.")
-            break  
+            break
 
+        # Increase image size if no improvement in validation loss for a certain number of epochs
+        max_image_size=428
+        if epoch_since_last_improvement >= patience and initial_image_size < max_image_size:
+            logger.info(f"Validation loss not improving. Increasing image size from {initial_image_size} to {initial_image_size + 32}")
+            initial_image_size += 32  # Increase the image size by 32 (or any other increment)
+            model = get_model_architecture(initial_image_size, num_classes).to(device)
+            # Update the data loaders with new image size transformations
+            train_loader.dataset.transform = get_augmentation_transforms(image_size=initial_image_size)
+            val_loader.dataset.transform = get_validation_transforms(image_size=initial_image_size)
+            epoch_since_last_improvement = 0  # Reset the counter for image size change
     model.load_state_dict(best_model_state)
     return model
+
 
 @app.command()
 def main(
