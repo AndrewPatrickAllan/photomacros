@@ -18,7 +18,7 @@ Modules:
 """
 import sys
 import os
-sys.path.append(os.path.abspath('~/Documents/GitHub/photomacros'))
+sys.path.append(os.path.abspath('/Users/allan/Documents/GitHub/photomacros'))
 
 from pathlib import Path
 import typer
@@ -59,6 +59,11 @@ def get_augmentation_transforms():
 ])
 
 
+# Define a separate function to replace the lambda
+# def process_ten_crop(crops):
+#     """Convert each crop to a tensor and normalize it."""
+#     return torch.stack([transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops])
+
 def get_validation_transforms():
     """
     Define and return transformations for validation and testing with 10-Crop Evaluation.
@@ -68,11 +73,10 @@ def get_validation_transforms():
     """
     return transforms.Compose([
         transforms.Resize(255),                   # Resize image to 255 pixels (keeps aspect ratio)
-        transforms.TenCrop(224),                  # Generate 10 crops (5 + flipped versions)
-        transforms.Lambda(lambda crops: torch.stack([
-            transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops
-        ]))  # Convert to tensor & normalize each of the 10 crops
-    ])
+        transforms.CenterCrop(224),  
+        transforms.ToTensor(),              
+        transforms.Normalize(mean=MEAN, std=STD)
+        ]) # Convert to tensor & normalize each of the 10 crops
 
 
 def split_data(input_data_dir, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
@@ -293,7 +297,7 @@ def get_model_architecture(image_size, num_classes):
         param.requires_grad = False
 
     #  Unfreeze last Dense Block for fine-tuning
-    for param in model.features[-2:].parameters():
+    for param in model.features[-4:].parameters():   # going 4 layers back from the end
         param.requires_grad = True
 
     #  Replace classifier with a new one
@@ -311,9 +315,12 @@ def get_model_architecture(image_size, num_classes):
     return model
 
 
+
+import torch
+
 def evaluate_validation_loss(val_loader, model, criterion):
     """
-    Evaluate the model's loss and accuracy on the validation dataset.
+    Evaluate the model's loss and accuracy on the validation dataset
 
     Args:
         val_loader (DataLoader): DataLoader for the validation dataset.
@@ -321,36 +328,92 @@ def evaluate_validation_loss(val_loader, model, criterion):
         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
 
     Returns:
-        tuple: (Average validation loss, Accuracy percentage)
+        tuple: (Average validation loss, Top-1 accuracy percentage, Top-5 accuracy percentage)
     """
-    device = torch.device("mps")
+    device = torch.device("mps")  # Modify to your device if needed (e.g., cuda, cpu)
     model.to(device)
-    model.eval()  
+    model.eval()  # Set the model to evaluation mode
     val_loss = 0.0
-    correct = 0
+    correct_top1 = 0
+    correct_top5 = 0
     total = 0
     num_batches = 0
 
-    with torch.no_grad():  
+    with torch.no_grad():  # No need to compute gradients during evaluation
         for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)  # Move data to MPS
-            outputs = model(images)
+            images, labels = images.to(device), labels.to(device)  # Move data to the appropriate device
             
+            # Forward pass through the model
+            outputs = model(images)
+
             # Compute loss
             loss = criterion(outputs, labels)
-            val_loss += loss.item()  
-            
-            # Compute accuracy
-            _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
-            correct += (predicted == labels).sum().item()
+            val_loss += loss.item()  # Accumulate validation loss
+
+            # Compute Top-1 and Top-5 accuracy
+            _, pred_top1 = outputs.topk(1, dim=1)  # Get Top-1 prediction
+            _, pred_top5 = outputs.topk(5, dim=1)  # Get Top-5 prediction
+
+            # Top-1 accuracy: Check if predicted class matches the true class
+            correct_top1 += (pred_top1 == labels.view(-1, 1)).sum().item()
+
+            # Top-5 accuracy: Check if true class is in top 5 predicted classes
+            correct_top5 += (pred_top5 == labels.view(-1, 1)).sum().item()
+
             total += labels.size(0)
-            
             num_batches += 1
 
-    avg_loss = val_loss / num_batches if num_batches > 0 else 0  
-    accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
+    # Average validation loss
+    avg_loss = val_loss / num_batches if num_batches > 0 else 0
 
-    return avg_loss, accuracy
+    # Top-1 and Top-5 accuracy
+    top1_acc = (correct_top1 / total) * 100 if total > 0 else 0
+    top5_acc = (correct_top5 / total) * 100 if total > 0 else 0
+
+    return avg_loss, top1_acc, top5_acc  # Return all values: loss, top-1, and top-5 accuracies
+
+
+# def evaluate_validation_loss(val_loader, model, criterion):
+#     """
+#     Evaluate the model's loss and accuracy on the validation dataset.
+
+#     Args:
+#         val_loader (DataLoader): DataLoader for the validation dataset.
+#         model (torch.nn.Module): The trained model.
+#         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
+
+#     Returns:
+#         tuple: (Average validation loss, Accuracy percentage)
+#     """
+#     device = torch.device("mps")
+#     model.to(device)
+#     model.eval()  
+#     val_loss = 0.0
+#     correct = 0
+#     total = 0
+#     num_batches = 0
+
+#     with torch.no_grad():  
+#         for images, labels in val_loader:
+#             images, labels = images.to(device), labels.to(device)  # Move data to MPS
+#             outputs = model(images)
+            
+#             # Compute loss
+#             loss = criterion(outputs, labels)
+#             val_loss += loss.item()  
+            
+#             # Compute accuracy
+#             _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
+#             correct += (predicted == labels).sum().item()
+#             total += labels.size(0)
+            
+#             num_batches += 1
+
+#     avg_loss = val_loss / num_batches if num_batches > 0 else 0  
+#     accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
+
+#     return avg_loss, accuracy
+
 def train_model(train_loader,val_loader):
     """
     Train the model using the training DataLoader.
@@ -404,12 +467,12 @@ def train_model(train_loader,val_loader):
             train_loss += loss.item()
             progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
 
-        val_loss,accuracy = evaluate_validation_loss(val_loader, model, criterion)
-        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Validation Loss = {val_loss:.4f}, Accuracy = {accuracy}")
-        scheduler.step(val_loss)  # Update LR according to Cosine Annealing
+        avg_val_loss, top1_acc, top5_acc = evaluate_validation_loss(val_loader, model, criterion)
+        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, top1 = {top1_acc} top5_acc = {top5_acc}")
+        scheduler.step(avg_val_loss)  # Update LR according to Cosine Annealing
         logger.info(f"Updated Learning Rate: {scheduler.get_last_lr()[0]:.6f}")
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
             patience_counter = 0
             best_model_state = model.state_dict()
             logger.info("Validation loss improved. Model saved.")
