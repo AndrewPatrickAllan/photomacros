@@ -17,36 +17,24 @@ Modules:
     - photomacros: Custom dataset utilities.
 """
 
-import sys
-import os
-sys.path.append(os.path.abspath('/Users/allan/Documents/GitHub/photomacros'))
-
-
 from pathlib import Path
 import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS 
-
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
+import torchvision.models as models
 # Additional imports for PyTorch and data handling
 import torch
 from torchvision import datasets, transforms
+
 from photomacros import dataset  # Custom dataset module
 import random
 from torch.utils.checkpoint import checkpoint
-from torch.cuda.amp import GradScaler, autocast
-
-
-
-
-# Set device globally
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-print(f"Using device: {device}")
+from torch.utils.data import Subset
 
 # Typer CLI application
 app = typer.Typer()
-
 
 
 def get_augmentation_transforms():
@@ -57,13 +45,15 @@ def get_augmentation_transforms():
         torchvision.transforms.Compose: A sequence of augmentations to apply to training data.
     """
     return transforms.Compose([
-        transforms.RandomRotation(degrees=15),           # Rotate images by up to 15 degrees
-        transforms.RandomHorizontalFlip(p=0.5),          # Flip images horizontally with a 50% chance
-        transforms.RandomResizedCrop(IMAGE_SIZE, scale=(0.8, 1.0)),  # Randomly crop and resize
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),  # Adjust image color properties
-        transforms.ToTensor(),                           # Convert image to tensor
-        transforms.Normalize(mean=MEAN, std=STD)         # Normalize image tensor
-    ])
+    transforms.RandomRotation(degrees=30),  # Less rotation (better for natural images)
+    transforms.RandomHorizontalFlip(),  
+    transforms.RandomResizedCrop(IMAGE_SIZE),  # Less aggressive cropping
+    transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Less extreme changes
+    transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.3, 0.7)),  # Less blur effect
+    transforms.RandomErasing(p=0.05, scale=(0.01, 0.03)),  # Less frequent and smaller erasing
+    transforms.ToTensor(),
+    transforms.Normalize(mean=MEAN, std=STD)
+])
 
 
 def get_validation_transforms():
@@ -74,13 +64,14 @@ def get_validation_transforms():
         torchvision.transforms.Compose: Transformations to apply to validation and test data.
     """
     return transforms.Compose([
-        transforms.Resize(IMAGE_SIZE),                  # Resize image to the specified size
+        transforms.Resize(255),                  # Resize image to the specified size
+        transforms.CenterCrop(224), 
         transforms.ToTensor(),                          # Convert image to tensor
         transforms.Normalize(mean=MEAN, std=STD)        # Normalize image tensor
     ])
 
 
-def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+def split_data(input_data_dir, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
     """
     Split the dataset into training, validation, and testing sets.
 
@@ -93,47 +84,22 @@ def split_data(input_data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
     Returns:
         tuple: Training, validation, and testing datasets.
     """
-    dataset = datasets.ImageFolder(input_data_dir, transform=None)
-    torch.manual_seed(42) 
-    # Compute sizes for splits
+    dataset = datasets.ImageFolder(input_data_dir)  # No transform here
+    torch.manual_seed(42)
+
+    # Compute sizes
     dataset_size = len(dataset)
     train_size = int(train_ratio * dataset_size)
     val_size = int(val_ratio * dataset_size)
-    test_size = dataset_size - train_size - val_size
+    test_size = dataset_size - train_size - val_size  # Ensure sum matches
 
     # Split the dataset
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+    train_indices, val_indices, test_indices = torch.utils.data.random_split(
+        list(range(dataset_size)), [train_size, val_size, test_size]
+    )
 
-    return train_dataset, val_dataset, test_dataset
+    return dataset, train_indices, val_indices, test_indices
 
-def evaluate_validation_loss(val_loader, model, criterion):
-    """
-    Evaluate the model's loss on the validation dataset.
-
-    Args:
-        val_loader (DataLoader): DataLoader for the validation dataset.
-        model (torch.nn.Module): The trained model.
-        criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
-
-    Returns:
-        float: Average validation loss.
-    """
-    model.eval()  # Set model to evaluation mode (disables dropout, batchnorm updates)
-    val_loss = 0.0
-    num_batches = 0
-
-    with torch.no_grad():  # No need to compute gradients
-        for images, labels in val_loader:
-            images, labels = images.to(device, dtype=torch.float32), labels.to(device)  # Move data to GPU
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            val_loss += loss.item()  # Accumulate loss per batch
-            num_batches += 1
-
-    return val_loss / num_batches if num_batches > 0 else 0  # Return average loss per batch
-    
-    
 def load_data(input_data_dir):
     """
     Load the dataset, apply transformations, and save test data for inference.
@@ -144,25 +110,28 @@ def load_data(input_data_dir):
     Returns:
         tuple: DataLoaders for training, validation, and testing datasets.
     """
-    train_dataset, val_dataset, test_dataset = split_data(input_data_dir)
+    dataset, train_indices, val_indices, test_indices = split_data(input_data_dir)
 
-    # Apply transformations
+    # Apply transformations **after splitting**
+    train_dataset = Subset(dataset, train_indices)
+    val_dataset = Subset(dataset, val_indices)
+    test_dataset = Subset(dataset, test_indices)
+
+    # Set transforms **on subsets, not new ImageFolder instances**
     train_dataset.dataset.transform = get_augmentation_transforms()
     val_dataset.dataset.transform = get_validation_transforms()
     test_dataset.dataset.transform = get_validation_transforms()
 
-    # Save datasets for future use
+    # Save datasets
     torch.save(test_dataset, MODELS_DIR / "test_data.pt")
     torch.save(val_dataset, MODELS_DIR / "val_data.pt")
     torch.save(train_dataset, MODELS_DIR / "train_data.pt")
     logger.success(f"Datasets saved to {MODELS_DIR}")
 
     # Create DataLoaders
-    num_workers=4  
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=num_workers, pin_memory=False)  # we could increase to num_workers=8 if enough ram
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers, pin_memory=False)   # we could increase to num_workers=8 if enough ram
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=num_workers, pin_memory=False)   # we could increase to num_workers=8 if enough ram
-
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     return train_loader, val_loader, test_loader
 
 
@@ -190,54 +159,167 @@ def get_model_architecture(image_size, num_classes):
     #     torch.nn.Linear(128, num_classes)
     # )
     # return model
-    model = torch.nn.Sequential(
-    # First Convolutional Block
-    torch.nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-    torch.nn.BatchNorm2d(32),  # Batch normalization
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    # model = torch.nn.Sequential(
+    #     # First Convolutional Block
+    #     torch.nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(64),  # Batch normalization
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    # Second Convolutional Block
-    torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-    torch.nn.BatchNorm2d(64),  # Batch normalization
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    #     # Second Convolutional Block
+    #     torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(128),  # Batch normalization
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    # Third Convolutional Block
-    torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-    torch.nn.BatchNorm2d(128),  # Batch normalization
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    #     # Third Convolutional Block
+    #     torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(256),  # Batch normalization
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    # Fourth Convolutional Block
-    torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-    torch.nn.BatchNorm2d(256),  # Batch normalization
-    torch.nn.ReLU(),
-    torch.nn.MaxPool2d(kernel_size=2, stride=2),
+    #     # Fourth Convolutional Block (Increased complexity)
+    #     torch.nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(512),  # Batch normalization
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    # Global Average Pooling
-    torch.nn.AdaptiveAvgPool2d((1, 1)),  # Reduces to 1x1 feature map for each channel
+    #     # Fifth Convolutional Block (Increased complexity)
+    #     torch.nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(1024),  # Batch normalization
+    #     torch.nn.ReLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
-    # Flattening
-    torch.nn.Flatten(),
+    #     # Global Average Pooling (to reduce to 1x1 feature map)
+    #     torch.nn.AdaptiveAvgPool2d((1, 1)),  # Reduces to 1x1 feature map for each channel
 
-    # Fully Connected Layer
-    torch.nn.Linear(256, 128),
-    torch.nn.ReLU(),
-    torch.nn.Dropout(0.3),  # Dropout to prevent overfitting
+    #     # Flattening
+    #     torch.nn.Flatten(),
 
-    # Output Layer
-    torch.nn.Linear(128, num_classes)
+    #     # Fully Connected Layers (Increased depth)
+    #     torch.nn.Linear(1024, 512),
+    #     torch.nn.BatchNorm1d(512),  
+    #     torch.nn.ReLU(),
+    #     torch.nn.Dropout(0.1),
+
+    #     torch.nn.Linear(512, 256),
+    #     torch.nn.BatchNorm1d(256),  
+    #     torch.nn.ReLU(),
+    #     torch.nn.Dropout(0.1),
+
+    #     torch.nn.Linear(256, num_classes)  # Output layer
+    # )
+    # model = torch.nn.Sequential(
+    #     # First Convolutional Block
+    #     torch.nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(64),
+    #     torch.nn.SiLU(),
+    #     torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),  # Extra conv layer
+    #     torch.nn.BatchNorm2d(64),
+    #     torch.nn.SiLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),  
+
+    #     # Second Convolutional Block
+    #     torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(128),
+    #     torch.nn.SiLU(),
+    #     torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),  # Extra conv layer
+    #     torch.nn.BatchNorm2d(128),
+    #     torch.nn.SiLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    #     # Third Convolutional Block (Smaller filter size)
+    #     torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(256),
+    #     torch.nn.SiLU(),
+    #     torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(256),
+    #     torch.nn.SiLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    #     # Fourth Convolutional Block (Reduce number of filters)
+    #     torch.nn.Conv2d(256, 384, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(384),
+    #     torch.nn.SiLU(),
+    #     torch.nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1),
+    #     torch.nn.BatchNorm2d(384),
+    #     torch.nn.SiLU(),
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
+
+    #     # Global Average Pooling instead of fully connected layers
+    #     torch.nn.AdaptiveAvgPool2d((1, 1)),  
+    #     torch.nn.Flatten(),
+
+    #     # Fully Connected Layers
+    #     torch.nn.Linear(384, 256),
+    #     torch.nn.BatchNorm1d(256),  
+    #     torch.nn.SiLU(),
+    #     torch.nn.Dropout(0.3),  # Only one dropout here
+
+    #     torch.nn.Linear(256, 128),
+    #     torch.nn.BatchNorm1d(128),  
+    #     torch.nn.SiLU(),
+
+    #     torch.nn.Linear(128, num_classes)
+    # )
+    #pretained is better? has many more layers, we will see
+    model = models.densenet161(weights=models.DenseNet161_Weights.IMAGENET1K_V1)  # Load pretrained model
+    num_features = model.classifier.in_features  # Get the number of input features to the classifier
+    for param in model.parameters():
+        param.requires_grad = False
+    # Replace the classifier with a new fully connected layer
+    model.classifier = torch.nn.Sequential(
+        torch.nn.Linear(num_features, 512),
+        torch.nn.LeakyReLU(),
+        torch.nn.Linear(512,256),
+        torch.nn.LeakyReLU(),
+        torch.nn.Dropout(0.5),
+        torch.nn.Linear(256,num_classes)
     )
-
-
-    model.to(device)  # Move model to GPU
-
 
     return model
 
 
+def evaluate_validation_loss(val_loader, model, criterion):
+    """
+    Evaluate the model's loss and accuracy on the validation dataset.
 
+    Args:
+        val_loader (DataLoader): DataLoader for the validation dataset.
+        model (torch.nn.Module): The trained model.
+        criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
+
+    Returns:
+        tuple: (Average validation loss, Accuracy percentage)
+    """
+    device = torch.device("mps")
+    model.to(device)
+    model.eval()  
+    val_loss = 0.0
+    correct = 0
+    total = 0
+    num_batches = 0
+
+    with torch.no_grad():  
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)  # Move data to MPS
+            outputs = model(images)
+            
+            # Compute loss
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()  
+            
+            # Compute accuracy
+            _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
+            correct += (predicted == labels).sum().item()
+            total += labels.size(0)
+            
+            num_batches += 1
+
+    avg_loss = val_loss / num_batches if num_batches > 0 else 0  
+    accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
+
+    return avg_loss, accuracy
 def train_model(train_loader,val_loader):
     """
     Train the model using the training DataLoader.
@@ -248,27 +330,26 @@ def train_model(train_loader,val_loader):
     Returns:
         torch.nn.Sequential: Trained model.
     """
+
+# Automatically detect the best device
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    logger.success(f"Using device: {device}")
+
     num_classes = len(train_loader.dataset.dataset.classes)
-    model = get_model_architecture(IMAGE_SIZE, num_classes)
-    class_names = train_loader.dataset.dataset.classes  # Extract class names
-    with open(MODELS_DIR / "class_names.txt", "w") as f:
-        for name in class_names:
-            f.write(name + "\n")
+    model = get_model_architecture(IMAGE_SIZE, num_classes).to(device)
 
-    #print("Class names saved:", class_names)
+    optimizer = torch.optim.Adam(model.classifier.parameters(), lr=0.001)
+    #optimizer = torch.optim.SGD(model.classifier.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
 
-    # Save number of classes for later use
-    with open(MODELS_DIR / "num_classes.txt", "w") as f:
-        f.write(str(num_classes))
-
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-4) #better optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    # Learning rate scheduler: Reduce LR if validation loss stops improving
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
-
+    # Cosine Annealing LR Scheduler
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode='max',   # Reduce LR when validation loss decreases
+    factor=1/3,   # Reduce LR by a factor of 0.5 (adjust as needed)
+    patience=10,   # Wait for 3 epochs without improvement before reducing
+    )
     best_val_loss = float('inf')
-    patience = 5  # Stop training if no improvement after 'patience' epochs
+    patience = 10
     patience_counter = 0
     best_model_state = None
 
@@ -278,28 +359,28 @@ def train_model(train_loader,val_loader):
         train_loss = 0.0
 
         for batch_idx, (images, labels) in progress_bar:
-            images, labels = images.to(device, dtype=torch.float32), labels.to(device)  # Move data to GPU
+            images, labels = images.to(device), labels.to(device)
+
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
+
+            # Gradient Clipping to prevent exploding gradients
+            #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             train_loss += loss.item()
             progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
 
-        # Compute validation loss at the end of each epoch
-        val_loss = evaluate_validation_loss(val_loader, model, criterion)
-        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Validation Loss = {val_loss:.4f}")
-
-        # Update learning rate scheduler based on validation loss
-        scheduler.step(val_loss)
-
-        # Early stopping logic
+        val_loss,accuracy = evaluate_validation_loss(val_loader, model, criterion)
+        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Validation Loss = {val_loss:.4f}, Accuracy = {accuracy}")
+        scheduler.step(val_loss)  # Update LR according to Cosine Annealing
+        logger.info(f"Updated Learning Rate: {scheduler.get_last_lr()[0]:.6f}")
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            patience_counter = 0  # Reset patience counter
-            best_model_state = model.state_dict()  # Save best model
+            patience_counter = 0
+            best_model_state = model.state_dict()
             logger.info("Validation loss improved. Model saved.")
         else:
             patience_counter += 1
@@ -307,15 +388,15 @@ def train_model(train_loader,val_loader):
 
         if patience_counter >= patience:
             logger.info("Early stopping triggered. Training stopped.")
-            break  # Stop training if no improvement for 'patience' epochs
+            break  
 
-    # Load best model state before returning
     model.load_state_dict(best_model_state)
     return model
+
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
-    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop.pkl"
+    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet.pkl"
 ):
     """
     Main function to train the model and save the trained model.
@@ -325,7 +406,6 @@ def main(
         model_path (Path): Path to save the trained model.
     """
     logger.info("Starting training process...")
-    print (f"model_{NUM_EPOCHS}epochs_BetterModel_LRScheduler_Earlystop.pkl")
     train_loader, val_loader, test_loader = load_data(input_path)
     trained_model = train_model(train_loader,val_loader)
     torch.save(trained_model.state_dict(), model_path)
