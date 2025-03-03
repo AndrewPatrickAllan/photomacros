@@ -61,16 +61,17 @@ def get_augmentation_transforms():
 
 def get_validation_transforms():
     """
-    Define and return transformations for validation and testing.
+    Define and return transformations for validation and testing with 10-Crop Evaluation.
 
     Returns:
         torchvision.transforms.Compose: Transformations to apply to validation and test data.
     """
     return transforms.Compose([
-        transforms.Resize(255),                  # Resize image to the specified size
-        transforms.CenterCrop(224), 
-        transforms.ToTensor(),                          # Convert image to tensor
-        transforms.Normalize(mean=MEAN, std=STD)        # Normalize image tensor
+        transforms.Resize(255),                   # Resize image to 255 pixels (keeps aspect ratio)
+        transforms.TenCrop(224),                  # Generate 10 crops (5 + flipped versions)
+        transforms.Lambda(lambda crops: torch.stack([
+            transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops
+        ]))  # Convert to tensor & normalize each of the 10 crops
     ])
 
 
@@ -268,16 +269,43 @@ def get_model_architecture(image_size, num_classes):
     #pretained is better? has many more layers, we will see
     model = models.densenet161(weights=models.DenseNet161_Weights.IMAGENET1K_V1)  # Load pretrained model
     num_features = model.classifier.in_features  # Get the number of input features to the classifier
+    # for param in model.parameters():
+    #     param.requires_grad = False
+
+    # # Unfreeze last few layers for fine-tuning
+    # for param in list(model.layer4.parameters()) + list(model.fc.parameters()):
+    #     param.requires_grad = True
+
+    # # Replace the classifier with a new fully connected layer
+    # model.classifier = torch.nn.Sequential(
+    #     torch.nn.Linear(num_features, 512),
+    #     torch.nn.LeakyReLU(),
+    #     torch.nn.Linear(512,256),
+    #     torch.nn.LeakyReLU(),
+    #     torch.nn.Dropout(0.5),
+    #     torch.nn.Linear(256,num_classes)
+    # )
+
+    # return model
+
+     # Freezing all layers first
     for param in model.parameters():
         param.requires_grad = False
-    # Replace the classifier with a new fully connected layer
+
+    #  Unfreeze last Dense Block for fine-tuning
+    for param in model.features[-2:].parameters():
+        param.requires_grad = True
+
+    #  Replace classifier with a new one
     model.classifier = torch.nn.Sequential(
         torch.nn.Linear(num_features, 512),
-        torch.nn.LeakyReLU(),
-        torch.nn.Linear(512,256),
-        torch.nn.LeakyReLU(),
+        torch.nn.ReLU(),
+        torch.nn.BatchNorm1d(512),
+        torch.nn.Linear(512, 256),
+        torch.nn.ReLU(),
+        torch.nn.BatchNorm1d(256),
         torch.nn.Dropout(0.5),
-        torch.nn.Linear(256,num_classes)
+        torch.nn.Linear(256, num_classes)
     )
 
     return model
