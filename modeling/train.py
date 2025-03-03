@@ -16,6 +16,9 @@ Modules:
     - torch and torchvision: PyTorch libraries for deep learning.
     - photomacros: Custom dataset utilities.
 """
+import sys
+import os
+sys.path.append(os.path.abspath('~/Documents/GitHub/photomacros'))
 
 from pathlib import Path
 import typer
@@ -129,9 +132,9 @@ def load_data(input_data_dir):
     logger.success(f"Datasets saved to {MODELS_DIR}")
 
     # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=False)
     return train_loader, val_loader, test_loader
 
 
@@ -346,10 +349,10 @@ def train_model(train_loader,val_loader):
     #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode='max',   # Reduce LR when validation loss decreases
     factor=1/3,   # Reduce LR by a factor of 0.5 (adjust as needed)
-    patience=10,   # Wait for 3 epochs without improvement before reducing
+    patience=2,   # Wait for 3 epochs without improvement before reducing
     )
     best_val_loss = float('inf')
-    patience = 10
+    patience = 5
     patience_counter = 0
     best_model_state = None
 
