@@ -18,7 +18,7 @@ Modules:
 """
 import sys
 import os
-sys.path.append(os.path.abspath('~/Documents/GitHub/photomacros'))
+sys.path.append(os.path.abspath('/Users/allan/Documents/GitHub/photomacros'))
 
 from pathlib import Path
 import typer
@@ -59,6 +59,11 @@ def get_augmentation_transforms():
 ])
 
 
+# Define a separate function to replace the lambda
+# def process_ten_crop(crops):
+#     """Convert each crop to a tensor and normalize it."""
+#     return torch.stack([transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops])
+
 def get_validation_transforms():
     """
     Define and return transformations for validation and testing with 10-Crop Evaluation.
@@ -68,11 +73,10 @@ def get_validation_transforms():
     """
     return transforms.Compose([
         transforms.Resize(255),                   # Resize image to 255 pixels (keeps aspect ratio)
-        transforms.TenCrop(224),                  # Generate 10 crops (5 + flipped versions)
-        transforms.Lambda(lambda crops: torch.stack([
-            transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops
-        ]))  # Convert to tensor & normalize each of the 10 crops
-    ])
+        transforms.CenterCrop(224),  
+        transforms.ToTensor(),              
+        transforms.Normalize(mean=MEAN, std=STD)
+        ]) # Convert to tensor & normalize each of the 10 crops
 
 
 def split_data(input_data_dir, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
@@ -293,7 +297,7 @@ def get_model_architecture(image_size, num_classes):
         param.requires_grad = False
 
     #  Unfreeze last Dense Block for fine-tuning
-    for param in model.features[-2:].parameters():
+    for param in model.features[-4:].parameters():   # going 4 layers back from the end
         param.requires_grad = True
 
     #  Replace classifier with a new one
@@ -311,9 +315,12 @@ def get_model_architecture(image_size, num_classes):
     return model
 
 
+
+import torch
+
 def evaluate_validation_loss(val_loader, model, criterion):
     """
-    Evaluate the model's loss and accuracy on the validation dataset.
+    Evaluate the model's loss and accuracy on the validation dataset
 
     Args:
         val_loader (DataLoader): DataLoader for the validation dataset.
@@ -321,68 +328,123 @@ def evaluate_validation_loss(val_loader, model, criterion):
         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
 
     Returns:
-        tuple: (Average validation loss, Accuracy percentage)
+        tuple: (Average validation loss, Top-1 accuracy percentage, Top-5 accuracy percentage)
     """
-    device = torch.device("mps")
+    device = torch.device("mps")  # Modify to your device if needed (e.g., cuda, cpu)
     model.to(device)
-    model.eval()  
+    model.eval()  # Set the model to evaluation mode
     val_loss = 0.0
-    correct = 0
+    correct_top1 = 0
+    correct_top5 = 0
     total = 0
     num_batches = 0
 
-    with torch.no_grad():  
+    with torch.no_grad():  # No need to compute gradients during evaluation
         for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)  # Move data to MPS
-            outputs = model(images)
+            images, labels = images.to(device), labels.to(device)  # Move data to the appropriate device
             
+            # Forward pass through the model
+            outputs = model(images)
+
             # Compute loss
             loss = criterion(outputs, labels)
-            val_loss += loss.item()  
-            
-            # Compute accuracy
-            _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
-            correct += (predicted == labels).sum().item()
+            val_loss += loss.item()  # Accumulate validation loss
+
+            # Compute Top-1 and Top-5 accuracy
+            _, pred_top1 = outputs.topk(1, dim=1)  # Get Top-1 prediction
+            _, pred_top5 = outputs.topk(5, dim=1)  # Get Top-5 prediction
+
+            # Top-1 accuracy: Check if predicted class matches the true class
+            correct_top1 += (pred_top1 == labels.view(-1, 1)).sum().item()
+
+            # Top-5 accuracy: Check if true class is in top 5 predicted classes
+            correct_top5 += (pred_top5 == labels.view(-1, 1)).sum().item()
+
             total += labels.size(0)
-            
             num_batches += 1
 
-    avg_loss = val_loss / num_batches if num_batches > 0 else 0  
-    accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
+    # Average validation loss
+    avg_loss = val_loss / num_batches if num_batches > 0 else 0
 
-    return avg_loss, accuracy
-def train_model(train_loader,val_loader):
+    # Top-1 and Top-5 accuracy
+    top1_acc = (correct_top1 / total) * 100 if total > 0 else 0
+    top5_acc = (correct_top5 / total) * 100 if total > 0 else 0
+
+    return avg_loss, top1_acc, top5_acc  # Return all values: loss, top-1, and top-5 accuracies
+
+
+# def evaluate_validation_loss(val_loader, model, criterion):
+#     """
+#     Evaluate the model's loss and accuracy on the validation dataset.
+
+#     Args:
+#         val_loader (DataLoader): DataLoader for the validation dataset.
+#         model (torch.nn.Module): The trained model.
+#         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
+
+#     Returns:
+#         tuple: (Average validation loss, Accuracy percentage)
+#     """
+#     device = torch.device("mps")
+#     model.to(device)
+#     model.eval()  
+#     val_loss = 0.0
+#     correct = 0
+#     total = 0
+#     num_batches = 0
+
+#     with torch.no_grad():  
+#         for images, labels in val_loader:
+#             images, labels = images.to(device), labels.to(device)  # Move data to MPS
+#             outputs = model(images)
+            
+#             # Compute loss
+#             loss = criterion(outputs, labels)
+#             val_loss += loss.item()  
+            
+#             # Compute accuracy
+#             _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
+#             correct += (predicted == labels).sum().item()
+#             total += labels.size(0)
+            
+#             num_batches += 1
+
+#     avg_loss = val_loss / num_batches if num_batches > 0 else 0  
+#     accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
+
+#     return avg_loss, accuracy
+
+def train_model(train_loader, val_loader, initial_image_size=224, max_image_size=256, patience=5):
     """
-    Train the model using the training DataLoader.
+    Train the model using the training DataLoader. Increase image size if loss stagnates.
 
     Args:
         train_loader (DataLoader): DataLoader for the training dataset.
+        val_loader (DataLoader): DataLoader for the validation dataset.
+        initial_image_size (int): Initial size of images (default is 224).
+        max_image_size (int): Maximum image size to increase to (default is 256).
+        patience (int): Number of epochs without improvement before increasing image size.
 
     Returns:
-        torch.nn.Sequential: Trained model.
+        torch.nn.Module: Trained model.
     """
-
-# Automatically detect the best device
+    # Automatically detect the best device
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     logger.success(f"Using device: {device}")
 
+    # Model setup
     num_classes = len(train_loader.dataset.dataset.classes)
-    model = get_model_architecture(IMAGE_SIZE, num_classes).to(device)
+    model = get_model_architecture(initial_image_size, num_classes).to(device)
 
     optimizer = torch.optim.Adam(model.classifier.parameters(), lr=0.001)
-    #optimizer = torch.optim.SGD(model.classifier.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
-
     criterion = torch.nn.CrossEntropyLoss()
-    # Cosine Annealing LR Scheduler
-    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( optimizer, mode='max',   # Reduce LR when validation loss decreases
-    factor=1/3,   # Reduce LR by a factor of 0.5 (adjust as needed)
-    patience=2,   # Wait for 3 epochs without improvement before reducing
-    )
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=2)
+
     best_val_loss = float('inf')
-    patience = 5
     patience_counter = 0
     best_model_state = None
+    epoch_since_last_improvement = 0
 
     model.train()
     for epoch in range(NUM_EPOCHS):
@@ -397,32 +459,45 @@ def train_model(train_loader,val_loader):
             loss = criterion(outputs, labels)
             loss.backward()
 
-            # Gradient Clipping to prevent exploding gradients
-            #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             train_loss += loss.item()
             progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
 
-        val_loss,accuracy = evaluate_validation_loss(val_loader, model, criterion)
-        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Validation Loss = {val_loss:.4f}, Accuracy = {accuracy}")
-        scheduler.step(val_loss)  # Update LR according to Cosine Annealing
-        logger.info(f"Updated Learning Rate: {scheduler.get_last_lr()[0]:.6f}")
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        avg_val_loss, top1_acc, top5_acc = evaluate_validation_loss(val_loader, model, criterion)
+        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}")
+        scheduler.step(avg_val_loss)
+
+        # If the validation loss has improved, save the model state
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
             patience_counter = 0
             best_model_state = model.state_dict()
             logger.info("Validation loss improved. Model saved.")
+            epoch_since_last_improvement = 0
         else:
             patience_counter += 1
+            epoch_since_last_improvement += 1
             logger.info(f"No improvement for {patience_counter} epochs.")
 
+        # Early stopping based on patience
         if patience_counter >= patience:
             logger.info("Early stopping triggered. Training stopped.")
-            break  
+            break
 
+        # Increase image size if no improvement in validation loss for a certain number of epochs
+        max_image_size=428
+        if epoch_since_last_improvement >= patience and initial_image_size < max_image_size:
+            logger.info(f"Validation loss not improving. Increasing image size from {initial_image_size} to {initial_image_size + 32}")
+            initial_image_size += 32  # Increase the image size by 32 (or any other increment)
+            model = get_model_architecture(initial_image_size, num_classes).to(device)
+            # Update the data loaders with new image size transformations
+            train_loader.dataset.transform = get_augmentation_transforms(image_size=initial_image_size)
+            val_loader.dataset.transform = get_validation_transforms(image_size=initial_image_size)
+            epoch_since_last_improvement = 0  # Reset the counter for image size change
     model.load_state_dict(best_model_state)
     return model
+
 
 @app.command()
 def main(
