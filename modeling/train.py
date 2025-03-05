@@ -374,46 +374,7 @@ def evaluate_validation_loss(val_loader, model, criterion):
     return avg_loss, top1_acc, top5_acc  # Return all values: loss, top-1, and top-5 accuracies
 
 
-# def evaluate_validation_loss(val_loader, model, criterion):
-#     """
-#     Evaluate the model's loss and accuracy on the validation dataset.
 
-#     Args:
-#         val_loader (DataLoader): DataLoader for the validation dataset.
-#         model (torch.nn.Module): The trained model.
-#         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
-
-#     Returns:
-#         tuple: (Average validation loss, Accuracy percentage)
-#     """
-#     device = torch.device("mps")
-#     model.to(device)
-#     model.eval()  
-#     val_loss = 0.0
-#     correct = 0
-#     total = 0
-#     num_batches = 0
-
-#     with torch.no_grad():  
-#         for images, labels in val_loader:
-#             images, labels = images.to(device), labels.to(device)  # Move data to MPS
-#             outputs = model(images)
-            
-#             # Compute loss
-#             loss = criterion(outputs, labels)
-#             val_loss += loss.item()  
-            
-#             # Compute accuracy
-#             _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
-#             correct += (predicted == labels).sum().item()
-#             total += labels.size(0)
-            
-#             num_batches += 1
-
-#     avg_loss = val_loss / num_batches if num_batches > 0 else 0  
-#     accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
-
-#     return avg_loss, accuracy
 
 def train_model(
         # train_loader, val_loader, 
@@ -490,7 +451,7 @@ def train_model(
         if epoch_since_last_improvement >= patience and image_size < max_image_size:
             logger.info(f"Validation loss not improving. Increasing image size from {image_size} to {image_size + 100}")
             image_size += 100  # Increase the image 
-            model = get_model_architecture(image_size, num_classes).to(device)
+
             # Update the data loaders with new image size transformations
             train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
             val_loader.dataset.transform = get_validation_transforms(image_size=image_size)

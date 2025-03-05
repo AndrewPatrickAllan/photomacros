@@ -36,8 +36,8 @@ FIGURES_DIR = REPORTS_DIR / "figures"                   # Directory for report f
 
 # Image processing constants
 # IMAGE_SIZE = 128  # Image size used for training 
-initial_image_size=128
-max_image_size=328
+initial_image_size=228
+max_image_size=428
 patience=2
 MEAN = [0.485, 0.456, 0.406]  # Mean values for image normalization
 STD = [0.229, 0.224, 0.225]   # Standard deviation values for image normalization
