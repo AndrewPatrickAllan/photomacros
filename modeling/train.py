@@ -25,7 +25,7 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import random_split, DataLoader
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, MEAN, STD, BATCH_SIZE, NUM_EPOCHS, initial_image_size, max_image_size, patience
 import torchvision.models as models
 # Additional imports for PyTorch and data handling
 import torch
@@ -40,7 +40,7 @@ from torch.utils.data import Subset
 app = typer.Typer()
 
 
-def get_augmentation_transforms():
+def get_augmentation_transforms(image_size):
     """
     Define and return data augmentation transformations for training.
 
@@ -50,7 +50,7 @@ def get_augmentation_transforms():
     return transforms.Compose([
     transforms.RandomRotation(degrees=30),  # Less rotation (better for natural images)
     transforms.RandomHorizontalFlip(),  
-    transforms.RandomResizedCrop(IMAGE_SIZE),  # Less aggressive cropping
+    transforms.RandomResizedCrop(image_size),  # Less aggressive cropping
     transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Less extreme changes
     transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.3, 0.7)),  # Less blur effect
     transforms.RandomErasing(p=0.05, scale=(0.01, 0.03)),  # Less frequent and smaller erasing
@@ -64,22 +64,22 @@ def get_augmentation_transforms():
 #     """Convert each crop to a tensor and normalize it."""
 #     return torch.stack([transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops])
 
-def get_validation_transforms():
+def get_validation_transforms(image_size):
     """
-    Define and return transformations for validation and testing with 10-Crop Evaluation.
+    Define and return transformations for validation
 
     Returns:
         torchvision.transforms.Compose: Transformations to apply to validation and test data.
     """
     return transforms.Compose([
-        transforms.Resize(255),                   # Resize image to 255 pixels (keeps aspect ratio)
-        transforms.CenterCrop(224),  
+        transforms.Resize(int(image_size * 1.12)),  # Resize slightly larger to keep aspect ratio
+        transforms.CenterCrop(image_size),  # Crop to exact size
         transforms.ToTensor(),              
         transforms.Normalize(mean=MEAN, std=STD)
-        ]) # Convert to tensor & normalize each of the 10 crops
+        ]) 
 
 
-def split_data(input_data_dir, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
+def split_data(input_data_dir, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
     """
     Split the dataset into training, validation, and testing sets.
 
@@ -108,7 +108,9 @@ def split_data(input_data_dir, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
 
     return dataset, train_indices, val_indices, test_indices
 
-def load_data(input_data_dir):
+
+
+def load_data(input_data_dir, image_size):
     """
     Load the dataset, apply transformations, and save test data for inference.
 
@@ -126,9 +128,9 @@ def load_data(input_data_dir):
     test_dataset = Subset(dataset, test_indices)
 
     # Set transforms **on subsets, not new ImageFolder instances**
-    train_dataset.dataset.transform = get_augmentation_transforms()
-    val_dataset.dataset.transform = get_validation_transforms()
-    test_dataset.dataset.transform = get_validation_transforms()
+    train_dataset.dataset.transform = get_augmentation_transforms(image_size)
+    val_dataset.dataset.transform = get_validation_transforms(image_size)
+    test_dataset.dataset.transform = get_validation_transforms(image_size)
 
     # Save datasets
     torch.save(test_dataset, MODELS_DIR / "test_data.pt")
@@ -143,12 +145,11 @@ def load_data(input_data_dir):
     return train_loader, val_loader, test_loader
 
 
-def get_model_architecture(image_size, num_classes):
+def get_model_architecture(num_classes):
     """
     Define and return the model architecture.
 
     Args:
-        image_size (int): Input image size (assumes square images).
         num_classes (int): Number of output classes.
 
     Returns:
@@ -373,48 +374,12 @@ def evaluate_validation_loss(val_loader, model, criterion):
     return avg_loss, top1_acc, top5_acc  # Return all values: loss, top-1, and top-5 accuracies
 
 
-# def evaluate_validation_loss(val_loader, model, criterion):
-#     """
-#     Evaluate the model's loss and accuracy on the validation dataset.
 
-#     Args:
-#         val_loader (DataLoader): DataLoader for the validation dataset.
-#         model (torch.nn.Module): The trained model.
-#         criterion (torch.nn.Module): Loss function (e.g., CrossEntropyLoss, MSELoss).
 
-#     Returns:
-#         tuple: (Average validation loss, Accuracy percentage)
-#     """
-#     device = torch.device("mps")
-#     model.to(device)
-#     model.eval()  
-#     val_loss = 0.0
-#     correct = 0
-#     total = 0
-#     num_batches = 0
-
-#     with torch.no_grad():  
-#         for images, labels in val_loader:
-#             images, labels = images.to(device), labels.to(device)  # Move data to MPS
-#             outputs = model(images)
-            
-#             # Compute loss
-#             loss = criterion(outputs, labels)
-#             val_loss += loss.item()  
-            
-#             # Compute accuracy
-#             _, predicted = torch.max(outputs, 1)  # Get the class with the highest probability
-#             correct += (predicted == labels).sum().item()
-#             total += labels.size(0)
-            
-#             num_batches += 1
-
-#     avg_loss = val_loss / num_batches if num_batches > 0 else 0  
-#     accuracy = (correct / total) * 100 if total > 0 else 0  # Accuracy in percentage
-
-#     return avg_loss, accuracy
-
-def train_model(train_loader, val_loader, initial_image_size=224, max_image_size=256, patience=5):
+def train_model(
+        # train_loader, val_loader, 
+        input_path, 
+        initial_image_size, max_image_size, patience):
     """
     Train the model using the training DataLoader. Increase image size if loss stagnates.
 
@@ -432,20 +397,21 @@ def train_model(train_loader, val_loader, initial_image_size=224, max_image_size
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     logger.success(f"Using device: {device}")
 
+    image_size=initial_image_size
+    train_loader, val_loader, test_loader = load_data(input_path, image_size=image_size)
+
     # Model setup
     num_classes = len(train_loader.dataset.dataset.classes)
-    model = get_model_architecture(initial_image_size, num_classes).to(device)
+    model = get_model_architecture(num_classes).to(device)
 
     optimizer = torch.optim.Adam(model.classifier.parameters(), lr=0.001)
     criterion = torch.nn.CrossEntropyLoss()
-
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=2)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=patience)
 
     best_val_loss = float('inf')
     patience_counter = 0
     best_model_state = None
     epoch_since_last_improvement = 0
-
     model.train()
     for epoch in range(NUM_EPOCHS):
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
@@ -480,20 +446,15 @@ def train_model(train_loader, val_loader, initial_image_size=224, max_image_size
             epoch_since_last_improvement += 1
             logger.info(f"No improvement for {patience_counter} epochs.")
 
-        # Early stopping based on patience
-        if patience_counter >= patience:
-            logger.info("Early stopping triggered. Training stopped.")
-            break
 
         # Increase image size if no improvement in validation loss for a certain number of epochs
-        max_image_size=428
-        if epoch_since_last_improvement >= patience and initial_image_size < max_image_size:
-            logger.info(f"Validation loss not improving. Increasing image size from {initial_image_size} to {initial_image_size + 32}")
-            initial_image_size += 32  # Increase the image size by 32 (or any other increment)
-            model = get_model_architecture(initial_image_size, num_classes).to(device)
+        if epoch_since_last_improvement >= patience and image_size < max_image_size:
+            logger.info(f"Validation loss not improving. Increasing image size from {image_size} to {image_size + 100}")
+            image_size += 100  # Increase the image 
+
             # Update the data loaders with new image size transformations
-            train_loader.dataset.transform = get_augmentation_transforms(image_size=initial_image_size)
-            val_loader.dataset.transform = get_validation_transforms(image_size=initial_image_size)
+            train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
+            val_loader.dataset.transform = get_validation_transforms(image_size=image_size)
             epoch_since_last_improvement = 0  # Reset the counter for image size change
     model.load_state_dict(best_model_state)
     return model
@@ -512,8 +473,7 @@ def main(
         model_path (Path): Path to save the trained model.
     """
     logger.info("Starting training process...")
-    train_loader, val_loader, test_loader = load_data(input_path)
-    trained_model = train_model(train_loader,val_loader)
+    trained_model = train_model( input_path, initial_image_size, max_image_size, patience)
     torch.save(trained_model.state_dict(), model_path)
     logger.success(f"Model saved to {model_path}.")
 
