@@ -14,7 +14,7 @@ from train import load_data, get_model_architecture,get_validation_transforms # 
 # from photomacros import dataset
 # import random
 # -------------------
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,  BATCH_SIZE,NUM_EPOCHS,MEAN,STD # IMAGE_SIZE,
 from torchvision import datasets, transforms
 
 
@@ -25,7 +25,6 @@ print(f"Using device: {device}")
 
 
 app = typer.Typer()
-
 
 
 def load_model_into_eval_model( model_path: Path):
@@ -46,7 +45,7 @@ def load_model_into_eval_model( model_path: Path):
 
     # Initialize the model
     logger.info("Initializing model architecture...")
-    model = get_model_architecture(IMAGE_SIZE, num_classes)
+    model = get_model_architecture(num_classes).to(device)
 
     # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
@@ -83,7 +82,7 @@ def perform_inference(
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset=torch.load(test_data_path)
 
-    test_dataset.transform = get_validation_transforms()
+    test_dataset.transform = get_validation_transforms(image_size=228/2.0)  #  image transformations (should match the preprocessing used in training)
 
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=False)
 
@@ -170,7 +169,7 @@ def save_test_labels(
 
 @app.command()
 def main(
-    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop.pkl",
+    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet.pkl",
     predictions_path: Path = MODELS_DIR / "test_predictions.pt",
     test_data_path: Path = MODELS_DIR/ "test_data.pt",
     test_labels_output_path: Path = MODELS_DIR / "test_labels.csv"
