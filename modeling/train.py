@@ -24,7 +24,7 @@ from pathlib import Path
 import typer
 from loguru import logger
 from tqdm import tqdm
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split,DataLoader, Subset, WeightedRandomSampler
 from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, MEAN, STD, BATCH_SIZE, NUM_EPOCHS, initial_image_size, max_image_size, patience
 import torchvision.models as models
 # Additional imports for PyTorch and data handling
@@ -34,7 +34,6 @@ from torchvision import datasets, transforms
 from photomacros import dataset  # Custom dataset module
 import random
 from torch.utils.checkpoint import checkpoint
-from torch.utils.data import Subset
 from collections import defaultdict
 from collections import Counter
 # Typer CLI application
@@ -80,7 +79,7 @@ def get_validation_transforms(image_size):
         ]) 
 
 
-def split_data(input_data_dir,num_classes, train_ratio=0.7, val_ratio=0.2, test_ratio=0.0):
+def split_data(input_data_dir,num_classes, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
     """
     Split the dataset into training, validation, and testing sets while preserving class ratios.
 
@@ -148,11 +147,19 @@ def split_data(input_data_dir,num_classes, train_ratio=0.7, val_ratio=0.2, test_
         test_indices.extend(indices[train_size + val_size:].tolist())
 
     return dataset, train_indices, val_indices, test_indices
-
-def update_optimizer_lr(optimizer, new_lr):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = new_lr
-
+def get_class_weights(dataset, indices):
+    """Compute class weights for imbalanced datasets based on given indices."""
+    labels = [dataset.samples[i][1] for i in indices]  # Extract labels for the subset
+    class_counts = Counter(labels)
+    total_samples = sum(class_counts.values())
+    
+    # Compute inverse frequency weights
+    class_weights = {cls: total_samples / count for cls, count in class_counts.items()}
+    
+    # Assign weight to each sample in the subset
+    sample_weights = [class_weights[dataset.samples[i][1]] for i in indices]
+    
+    return sample_weights
 def load_data(input_data_dir,num_classes, image_size):
     """
     Load the dataset, apply transformations, and save test data for inference.
@@ -163,36 +170,14 @@ def load_data(input_data_dir,num_classes, image_size):
     Returns:
         tuple: DataLoaders for training, validation, and testing datasets.
     """
-    dataset, train_indices, val_indices, test_indices = split_data(input_data_dir,num_classes)
+    dataset, train_indices, val_indices, test_indices = split_data(input_data_dir, num_classes)
 
-    # Apply transformations **after splitting**
+    # Create subsets after splitting
     train_dataset = Subset(dataset, train_indices)
     val_dataset = Subset(dataset, val_indices)
     test_dataset = Subset(dataset, test_indices)
-    # """
-    # Prints the number of images per class in the original dataset and each split.
-    # """
-    # # Get all class labels
-    # all_labels = [dataset.samples[idx][1] for idx in range(len(dataset))]
-    # train_labels = [dataset.samples[idx][1] for idx in train_indices]
-    # val_labels = [dataset.samples[idx][1] for idx in val_indices]
-    # test_labels = [dataset.samples[idx][1] for idx in test_indices]
 
-    # # Count occurrences of each class
-    # original_counts = Counter(all_labels)
-    # train_counts = Counter(train_labels)
-    # val_counts = Counter(val_labels)
-    # test_counts = Counter(test_labels)
-
-    # print("\nClass Distribution:")
-    # print(f"{'Class':<10}{'Original':<10}{'Train':<10}{'Val':<10}{'Test':<10}")
-    # print("=" * 50)
-
-    # for class_idx in sorted(original_counts.keys()):
-    #     print(f"{class_idx:<10}{original_counts[class_idx]:<10}"
-    #           f"{train_counts[class_idx]:<10}{val_counts[class_idx]:<10}"
-    #           f"{test_counts[class_idx]:<10}")
-    # Set transforms **on subsets, not new ImageFolder instances**
+    # Apply appropriate transformations
     train_dataset.dataset.transform = get_augmentation_transforms(image_size)
     val_dataset.dataset.transform = get_validation_transforms(image_size)
     test_dataset.dataset.transform = get_validation_transforms(image_size)
@@ -203,13 +188,22 @@ def load_data(input_data_dir,num_classes, image_size):
     torch.save(train_dataset, MODELS_DIR / "train_data.pt")
     logger.success(f"Datasets saved to {MODELS_DIR}")
 
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE,num_workers=4, shuffle=False)
+    # Compute sample weights for training data
+    sample_weights = get_class_weights(dataset, train_indices)
+
+    # Create a WeightedRandomSampler
+    sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+
+    # Create DataLoaders with and without sampling
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4, sampler=sampler)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False)
+
     return train_loader, val_loader, test_loader
 
-
+def update_optimizer_lr(optimizer, new_lr):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = new_lr
 def get_model_architecture(num_classes):
     """
     Define and return the model architecture.
@@ -364,30 +358,31 @@ def get_model_architecture(num_classes):
     # Freeze all layers first
     for param in model.parameters():
         param.requires_grad = False
-    #for param in model.features[-2:].parameters():
-        #param.requires_grad = True
+    for param in model.features[-4:].parameters():
+        param.requires_grad = True
     # Replace classifier with a new one
     model.classifier = torch.nn.Sequential(
-        torch.nn.Linear(num_features, 512),
-        torch.nn.ReLU(inplace=True),
-        torch.nn.BatchNorm1d(512),
-        torch.nn.Dropout(0.5),  # Dropout after first layer
+    torch.nn.Linear(num_features, 512),
+    torch.nn.BatchNorm1d(512),
+    torch.nn.ReLU(inplace=True),
+    #torch.nn.Dropout(0.5),  # First dropout layer
+#maybe return batch2d1norm depedns im fitting overfitting with much maybe decrease the layers
+    torch.nn.Linear(512, 256),
+    torch.nn.BatchNorm1d(256),
+    torch.nn.ReLU(inplace=True),
+    #torch.nn.Dropout(0.5),  # Second dropout layer
 
-        torch.nn.Linear(512, 256),
-        torch.nn.ReLU(inplace=True),
-        torch.nn.BatchNorm1d(256),
-        torch.nn.Dropout(0.5),  # Another Dropout here
+    torch.nn.Linear(256, 128),
+    torch.nn.BatchNorm1d(128),
+    torch.nn.ReLU(inplace=True),
+    #torch.nn.Dropout(0.5),  # Third dropout layer
 
-        #torch.nn.Linear(256, 128),
-        #torch.nn.ReLU(inplace=True),
-        #torch.nn.BatchNorm1d(128),
-        #torch.nn.Dropout(0.7),  # Additional Dropout layer
-
-        torch.nn.Linear(256, num_classes)  # Output layer
-    )
+    torch.nn.Linear(128, num_classes)  # Output layer
+)
 
 
     return model
+
 
 
 
@@ -478,7 +473,7 @@ def train_model(
     
     model = get_model_architecture(num_classes).to(device)
 
-    optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=0.001,betas=(0.9,0.999),weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=0.001,betas=(0.9,0.999),weight_decay=1e-4)
     criterion = torch.nn.CrossEntropyLoss()
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=7)
 
@@ -488,7 +483,40 @@ def train_model(
     epoch_since_last_improvement = 0
     image_size_increased = False  # Prevent further increases
     model.train()
+    layers_unfrozen_2_to_5 = False
+    layers_unfrozen_after_15 = False
+
     for epoch in range(NUM_EPOCHS):
+        # Increase image size & unfreeze layers only once after epoch 2-5
+        if epoch >= 1 and epoch < 4 and not layers_unfrozen_2_to_5:
+            # Unfreeze last 4 layers
+            for param in model.features[-4:].parameters():
+                param.requires_grad = True
+            
+            new_lr = 0.0001
+            update_optimizer_lr(optimizer, new_lr)
+            layers_unfrozen_2_to_5 = True  # Ensure this block is only run once
+
+        # Increase image size & unfreeze layers only once after epoch 5-15
+        if epoch >= 4 and not image_size_increased and image_size < max_image_size:
+            new_image_size = min(image_size + 200, max_image_size)  # Ensure it doesn't exceed max
+            logger.info(f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 4 layers.")
+            
+            image_size = new_image_size
+            image_size_increased = True  # Prevent further increases
+            train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
+            val_loader.dataset.transform = get_validation_transforms(image_size=image_size)
+            # Unfreeze last 4 layers
+            #for param in model.features[-4:].parameters():
+                #param.requires_grad = True
+            
+        # Unfreeze layers after epoch 15
+        # if epoch >= 8 and not layers_unfrozen_after_15:
+        #     # Unfreeze last 6 layers
+        #     for param in model.features[-8:].parameters():
+        #         param.requires_grad = True
+        #     layers_unfrozen_after_15 = True  # Ensure this block is only run once
+
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
         train_loss = 0.0
 
@@ -523,33 +551,15 @@ def train_model(
             logger.info(f"No improvement for {patience_counter} epochs.")
 
 
-# Increase image size & unfreeze layers only once after epoch 15
-        if epoch >= 10 and not image_size_increased and image_size < max_image_size:
-            new_image_size = min(image_size + 200, max_image_size)  # Ensure it doesn't exceed max
-            logger.info(f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 4 layers.")
-            
-            image_size = new_image_size
-            image_size_increased = True  # Prevent further increases
 
-            # Unfreeze last 4 layers
-            for param in model.features[-4:].parameters():
-                param.requires_grad = True
 
-            # Update learning rate
-            new_lr = 0.0001  
-            update_optimizer_lr(optimizer, new_lr)
 
-            # Update dataset transforms with new image size
-            train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
-            val_loader.dataset.transform = get_validation_transforms(image_size=image_size)
-
-    # Load the best model state before returning
     model.load_state_dict(best_model_state)
     return model
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
-    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet.pkl"
+    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl"
 ):
     """
     Main function to train the model and save the trained model.

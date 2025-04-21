@@ -14,9 +14,9 @@ from train import load_data, get_model_architecture,get_validation_transforms # 
 # from photomacros import dataset
 # import random
 # -------------------
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,initial_image_size, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
 from torchvision import datasets, transforms
-
+IMAGE_SIZE=initial_image_size
 
 # Set device globally
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -46,7 +46,7 @@ def load_model_into_eval_model( model_path: Path):
 
     # Initialize the model
     logger.info("Initializing model architecture...")
-    model = get_model_architecture(IMAGE_SIZE, num_classes)
+    model = get_model_architecture(num_classes)
 
     # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
@@ -83,7 +83,7 @@ def perform_inference(
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset=torch.load(test_data_path)
 
-    test_dataset.transform = get_validation_transforms()
+    test_dataset.transform = get_validation_transforms(IMAGE_SIZE)
 
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=False)
 
