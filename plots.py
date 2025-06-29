@@ -17,9 +17,9 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
+    # -----------------------------------------
     input_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
-    output_path: Path = FIGURES_DIR / "plot.png",
+    output_path: Path = FIGURES_DIR ,
     # -----------------------------------------
 ):
     """
@@ -45,12 +45,37 @@ def main(
 
     plt.figure(figsize=(10, 4))
     plt.subplot(1, 2, 1)
-    plt.plot(history['epoch'], history['train_loss'], label='Train Loss')
-    plt.plot(history['epoch'], history['val_loss'], label='Val Loss')
+    plt.plot(history['epoch;'], history['train_loss'], label='Train Loss')
+    plt.plot(history['epoch;'], history['val_loss'], label='Val Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.title('Loss over Epochs')
     plt.legend()
+
+    plt.savefig(output_path / "epoch_vs_losses.png")
+    logger.info(f"Plot saved to {output_path}")
+
+
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(history['epoch;'], history['image_size'], label='Image Size')
+    plt.xlabel('Epoch')
+    plt.ylabel('iamge size')
+    plt.legend()
+    plt.savefig(output_path / "epoch_vs_image_size.png")
+    logger.info(f"Plot saved to {output_path}")
+
+
+
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(history['epoch;'], history['top1_acc'], label='Top-1 Acc')
+    plt.plot(history['epoch;'], history['top5_acc'], label='Top-5 Acc')
+    plt.xlabel('Epoch')
+    plt.ylabel('accuracy')
+    plt.legend()
+    plt.savefig(output_path / "epoch_vs_acc.png")
+    logger.info(f"Plot saved to {output_path}")
+
 
     logger.success("Plot generation complete.")
     # -----------------------------------------

@@ -12,6 +12,7 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 import torch
+import pickle
 
 
 
@@ -44,7 +45,7 @@ STD = [0.229, 0.224, 0.225]   # Standard deviation values for image normalizatio
 
 # Model training constants
 BATCH_SIZE = 64     # Number of samples in each batch
-NUM_EPOCHS = 1
+NUM_EPOCHS = 12
   # Number of epochs for training (quicker test configuration)
 
 # Path for saved test data
