@@ -14,9 +14,13 @@ from train import load_data, get_model_architecture,get_validation_transforms # 
 # from photomacros import dataset
 # import random
 # -------------------
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,  BATCH_SIZE,NUM_EPOCHS,MEAN,STD # IMAGE_SIZE,
+# <<<<<<< HEAD
+# from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,  BATCH_SIZE,NUM_EPOCHS,MEAN,STD # IMAGE_SIZE,
+# =======
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,initial_image_size, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
+# >>>>>>> Checkdatasplit
 from torchvision import datasets, transforms
-
+IMAGE_SIZE=initial_image_size
 
 # Set device globally
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -45,7 +49,11 @@ def load_model_into_eval_model( model_path: Path):
 
     # Initialize the model
     logger.info("Initializing model architecture...")
+# <<<<<<< HEAD
     model = get_model_architecture(num_classes).to(device)
+# =======
+#     model = get_model_architecture(num_classes)
+# >>>>>>> Checkdatasplit
 
     # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
@@ -82,7 +90,11 @@ def perform_inference(
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset=torch.load(test_data_path)
 
+# <<<<<<< HEAD
     test_dataset.transform = get_validation_transforms(image_size=228/2.0)  #  image transformations (should match the preprocessing used in training)
+# =======
+#     test_dataset.transform = get_validation_transforms(IMAGE_SIZE)
+# >>>>>>> Checkdatasplit
 
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=False)
 

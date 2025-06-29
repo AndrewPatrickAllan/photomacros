@@ -5,6 +5,7 @@ import torch
 from torchvision import transforms
 from PIL import Image
 from torch.utils.data import DataLoader
+# <<<<<<< HEAD
 from photomacros.config import MODELS_DIR, NUM_EPOCHS #, PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
 import torch
 from modeling.predict import load_model_into_eval_model
@@ -12,7 +13,15 @@ from modeling.nutrition import get_nutrition_info
 
 from pathlib import Path
 
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, initial_image_size, MEAN, STD, BATCH_SIZE, NUM_EPOCHS
 
+
+# =======
+# from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, initial_image_size, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
+# import torch
+# from modeling.predict import load_model_into_eval_model
+# IMAGE_SIZE=initial_image_size
+# >>>>>>> Checkdatasplit
 
 
 # Set device globally
@@ -50,18 +59,24 @@ def predict_food_user_single_image(image_path,  model_path   ):
     :return: Predicted food category as a string.
     """
 
-    model=load_model_into_eval_model(model_path)
-
+    model=load_model_into_eval_model(model_path).to(device)
+    state_dict = model
+    for key, value in state_dict.items():
+        print(key, value.shape) 
     class_labels = load_class_labels()
 
     image_size=228/2.0
  
+# <<<<<<< HEAD
     transform = get_validation_transforms(image_size)  #  image transformations (should match the preprocessing used in training)
+# =======
+#     transform = get_validation_transforms(IMAGE_SIZE)  #  image transformations (should match the preprocessing used in training)
+# >>>>>>> Checkdatasplit
     image = Image.open(image_path).convert("RGB")
     image = transform(image).unsqueeze(0).to(device)  # Add batch dimension
 
     with torch.no_grad():
-        outputs = model(image)  # Forward pass
+        outputs = model(image) # Forward pass
         predicted_class = torch.argmax(outputs, dim=1).item()  # Get class index
 
     predicted_food_string=class_labels[predicted_class]
@@ -73,16 +88,17 @@ def predict_food_user_single_image(image_path,  model_path   ):
 
 
 
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/croquettas.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/avocado.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/london_burger.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/burger.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/nachos2.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/guac.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/risotto.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/sushi.jpeg")
-# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/pizza.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/croquettas.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/avocado.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/london_burger.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/burger.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/Nachos3.jpg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/guac.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/risotto2.jpg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/sushi.jpeg")
+#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/pizza.jpeg")
 
-model_path=Path(MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet.pkl")
+model_path=Path(MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl")
+
 guess=predict_food_user_single_image(aa_test_guac_image_path, model_path)
 print('guess=', guess)
