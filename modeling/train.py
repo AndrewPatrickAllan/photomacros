@@ -34,8 +34,14 @@ from torchvision import datasets, transforms
 from photomacros import dataset  # Custom dataset module
 import random
 from torch.utils.checkpoint import checkpoint
+
 from collections import defaultdict
 from collections import Counter
+
+from torch.utils.data import Subset
+import pickle
+
+
 # Typer CLI application
 app = typer.Typer()
 
@@ -483,8 +489,21 @@ def train_model(
     epoch_since_last_improvement = 0
     image_size_increased = False  # Prevent further increases
     model.train()
+
     layers_unfrozen_2_to_5 = False
     layers_unfrozen_after_15 = False
+
+
+    # Initialize history for tracking metrics
+    history = {
+    'train_loss': [],
+    'val_loss': [],
+    'top1_acc': [],
+    'top5_acc': [],
+    'epoch;': [],
+    'image_size': []
+    }
+    
 
     for epoch in range(NUM_EPOCHS):
         # Increase image size & unfreeze layers only once after epoch 2-5
@@ -538,6 +557,14 @@ def train_model(
         logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}")
         #scheduler.step(avg_val_loss)
 
+        # Update history
+        history['train_loss'].append(train_loss / len(train_loader))
+        history['val_loss'].append(avg_val_loss)
+        history['top1_acc'].append(top1_acc)
+        history['top5_acc'].append(top5_acc)
+        history['epoch;'].append(epoch + 1)
+        history['image_size'].append(image_size)
+
         # If the validation loss has improved, save the model state
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -555,11 +582,20 @@ def train_model(
 
 
     model.load_state_dict(best_model_state)
+
+    # saving histroy of epoch number and accuracies 
+    history_path = Path(MODELS_DIR / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl")
+
+    with open(history_path, 'wb') as f:
+        pickle.dump(history, f)
+    logger.success(f"Training history saved to {history_path}.")
+
     return model
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
     model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl"
+
 ):
     """
     Main function to train the model and save the trained model.
