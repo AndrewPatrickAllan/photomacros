@@ -85,7 +85,7 @@ def get_validation_transforms(image_size):
         ]) 
 
 
-def split_data(input_data_dir,num_classes, train_ratio=0.8, val_ratio=0.2, test_ratio=0.0):
+def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
     """
     Split the dataset into training, validation, and testing sets while preserving class ratios.
 
@@ -130,7 +130,7 @@ def split_data(input_data_dir,num_classes, train_ratio=0.8, val_ratio=0.2, test_
     for idx, (_, label) in enumerate(dataset.samples):
         class_indices[label].append(idx)
     # Randomly select a subset of classes
-    selected_classes = random.sample(class_indices.keys(), num_classes)
+    selected_classes = random.sample(list(class_indices.keys()), num_classes)
 
     # Filter the indices to only include the selected classes
     filtered_class_indices = {label: indices for label, indices in class_indices.items() if label in selected_classes}
@@ -141,7 +141,7 @@ def split_data(input_data_dir,num_classes, train_ratio=0.8, val_ratio=0.2, test_
         num_samples = len(indices)
         train_size = int(train_ratio * num_samples)
         val_size = int(val_ratio * num_samples)
-        test_size = num_samples - train_size - val_size  # Ensure total matches
+        test_size =  int(test_ratio * num_samples) # Ensure total matches
 
         # Shuffle indices before splitting
         indices = torch.tensor(indices)
@@ -185,7 +185,7 @@ def load_data(input_data_dir,num_classes, image_size):
 
     # Apply appropriate transformations
     train_dataset.dataset.transform = get_augmentation_transforms(image_size)
-    val_dataset.dataset.transform = get_validation_transforms(image_size)
+    val_dataset.dataset.transform = get_validation_transforms(image_size) # Note this is not actually performing augmentation / transformations on validation data
     test_dataset.dataset.transform = get_validation_transforms(image_size)
 
     # Save datasets
@@ -336,7 +336,7 @@ def get_model_architecture(num_classes):
 
     #     torch.nn.Linear(128, num_classes)
     # )
-    #pretained is better? has many more layers, we will see
+    # Testing using pretained models - transfer learning is better?
     #model = models.densenet201(weights=models.DenseNet201_Weights.IMAGENET1K_V1)  # Load pretrained model
     #num_features = model.classifier.in_features  # Get the number of input features to the classifier
     # for param in model.parameters():
@@ -358,6 +358,7 @@ def get_model_architecture(num_classes):
 
     # return model
 
+
     model = models.densenet161(weights=models.DenseNet161_Weights.IMAGENET1K_V1)  
     num_features = model.classifier.in_features  # Get the number of input features to the classifier
 
@@ -367,25 +368,32 @@ def get_model_architecture(num_classes):
     for param in model.features[-4:].parameters():
         param.requires_grad = True
     # Replace classifier with a new one
+#     model.classifier = torch.nn.Sequential(
+#     torch.nn.Linear(num_features, 512),
+#     torch.nn.BatchNorm1d(512),
+#     torch.nn.ReLU(inplace=True),
+#     torch.nn.Dropout(0.3),  # First dropout layer
+# #maybe return batch2d1norm depedns im fitting overfitting with much maybe decrease the layers
+#     torch.nn.Linear(512, 256),
+#     torch.nn.BatchNorm1d(256),
+#     torch.nn.ReLU(inplace=True),
+#     torch.nn.Dropout(0.3),  # Second dropout layer
+
+#     torch.nn.Linear(256, 128),
+#     torch.nn.BatchNorm1d(128),
+#     torch.nn.ReLU(inplace=True),
+#     torch.nn.Dropout(0.3),  # Third dropout layer
+
+#     torch.nn.Linear(128, num_classes)  # Output layer
+# )
+
+
     model.classifier = torch.nn.Sequential(
-    torch.nn.Linear(num_features, 512),
-    torch.nn.BatchNorm1d(512),
-    torch.nn.ReLU(inplace=True),
-    #torch.nn.Dropout(0.5),  # First dropout layer
-#maybe return batch2d1norm depedns im fitting overfitting with much maybe decrease the layers
-    torch.nn.Linear(512, 256),
-    torch.nn.BatchNorm1d(256),
-    torch.nn.ReLU(inplace=True),
-    #torch.nn.Dropout(0.5),  # Second dropout layer
-
-    torch.nn.Linear(256, 128),
-    torch.nn.BatchNorm1d(128),
-    torch.nn.ReLU(inplace=True),
-    #torch.nn.Dropout(0.5),  # Third dropout layer
-
-    torch.nn.Linear(128, num_classes)  # Output layer
-)
-
+    torch.nn.Linear(num_features, 256),
+    torch.nn.ReLU(),
+    torch.nn.Dropout(0.3),
+    torch.nn.Linear(256, num_classes)
+    )
 
     return model
 
@@ -482,6 +490,7 @@ def train_model(
     optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=0.001,betas=(0.9,0.999),weight_decay=1e-4)
     criterion = torch.nn.CrossEntropyLoss()
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=7)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=3, verbose=True)
 
     best_val_loss = float('inf')
     patience_counter = 0
@@ -490,8 +499,7 @@ def train_model(
     image_size_increased = False  # Prevent further increases
     model.train()
 
-    layers_unfrozen_2_to_5 = False
-    layers_unfrozen_after_15 = False
+
 
 
     # Initialize history for tracking metrics
@@ -507,34 +515,25 @@ def train_model(
 
     for epoch in range(NUM_EPOCHS):
         # Increase image size & unfreeze layers only once after epoch 2-5
-        if epoch >= 1 and epoch < 4 and not layers_unfrozen_2_to_5:
+        if epoch >= 1 and epoch < 4:
             # Unfreeze last 4 layers
             for param in model.features[-4:].parameters():
                 param.requires_grad = True
-            
-            new_lr = 0.0001
-            update_optimizer_lr(optimizer, new_lr)
-            layers_unfrozen_2_to_5 = True  # Ensure this block is only run once
 
-        # Increase image size & unfreeze layers only once after epoch 5-15
-        if epoch >= 4 and not image_size_increased and image_size < max_image_size:
-            new_image_size = min(image_size + 200, max_image_size)  # Ensure it doesn't exceed max
-            logger.info(f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 4 layers.")
+        
+        if epoch >= 5 and not image_size_increased and image_size < max_image_size:
+            new_image_size = min(image_size + 100, max_image_size)  # Ensure it doesn't exceed max
+            logger.info(f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 6 layers (instead of 4).")
             
             image_size = new_image_size
             image_size_increased = True  # Prevent further increases
             train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
             val_loader.dataset.transform = get_validation_transforms(image_size=image_size)
-            # Unfreeze last 4 layers
-            #for param in model.features[-4:].parameters():
-                #param.requires_grad = True
+            # Unfreeze last 6 layers
+            for param in model.features[-6:].parameters():
+                param.requires_grad = True
             
-        # Unfreeze layers after epoch 15
-        # if epoch >= 8 and not layers_unfrozen_after_15:
-        #     # Unfreeze last 6 layers
-        #     for param in model.features[-8:].parameters():
-        #         param.requires_grad = True
-        #     layers_unfrozen_after_15 = True  # Ensure this block is only run once
+
 
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
         train_loss = 0.0
@@ -557,6 +556,9 @@ def train_model(
         logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}")
         #scheduler.step(avg_val_loss)
 
+        # Step scheduler
+        scheduler.step(avg_val_loss)  # scheduler for learning rate adjustment
+
         # Update history
         history['train_loss'].append(train_loss / len(train_loader))
         history['val_loss'].append(avg_val_loss)
@@ -564,6 +566,15 @@ def train_model(
         history['top5_acc'].append(top5_acc)
         history['epoch;'].append(epoch + 1)
         history['image_size'].append(image_size)
+
+        # saving histroy of epoch number and accuracies (rewrites every epoch so have latest saved if stopped model run early)
+        history_path = Path(MODELS_DIR / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl")
+        with open(history_path, 'wb') as f:
+            pickle.dump(history, f)
+        logger.success(f"Training history saved to {history_path}.")
+
+
+
 
         # If the validation loss has improved, save the model state
         if avg_val_loss < best_val_loss:
@@ -583,12 +594,6 @@ def train_model(
 
     model.load_state_dict(best_model_state)
 
-    # saving histroy of epoch number and accuracies 
-    history_path = Path(MODELS_DIR / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl")
-
-    with open(history_path, 'wb') as f:
-        pickle.dump(history, f)
-    logger.success(f"Training history saved to {history_path}.")
 
     return model
 @app.command()

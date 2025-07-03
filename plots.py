@@ -70,6 +70,9 @@ def main(
     plt.subplot(1, 2, 1)
     plt.plot(history['epoch;'], history['top1_acc'], label='Top-1 Acc')
     plt.plot(history['epoch;'], history['top5_acc'], label='Top-5 Acc')
+    print('epoch:', history['epoch;'])
+    print('top1:',history['top1_acc'])
+    print('top5:',history['top5_acc'])
     plt.xlabel('Epoch')
     plt.ylabel('accuracy')
     plt.legend()
@@ -79,6 +82,9 @@ def main(
 
     logger.success("Plot generation complete.")
     # -----------------------------------------
+
+
+
 
 
 

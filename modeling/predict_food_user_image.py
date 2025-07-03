@@ -60,12 +60,13 @@ def predict_food_user_single_image(image_path,  model_path   ):
     """
 
     model=load_model_into_eval_model(model_path).to(device)
-    state_dict = model
+    # state_dict = model
+    state_dict = model.state_dict()
     for key, value in state_dict.items():
         print(key, value.shape) 
     class_labels = load_class_labels()
 
-    image_size=228/2.0
+    image_size=224
  
 # <<<<<<< HEAD
     transform = get_validation_transforms(image_size)  #  image transformations (should match the preprocessing used in training)
@@ -90,14 +91,12 @@ def predict_food_user_single_image(image_path,  model_path   ):
 
 #aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/croquettas.jpeg")
 #aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/avocado.jpeg")
-#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/london_burger.jpeg")
-#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/burger.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/london_burger.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/burger.jpeg")
 #aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/Nachos3.jpg")
-#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/guac.jpeg")
-aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/risotto2.jpg")
-#aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/sushi.jpeg")
+aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/guac.jpeg")
+# aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/sushi.jpeg")
 #aa_test_guac_image_path = os.path.expanduser("~/Documents/GitHub/photomacros/all_user_phone_test_images/pizza.jpeg")
-
 model_path=Path(MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl")
 
 guess=predict_food_user_single_image(aa_test_guac_image_path, model_path)

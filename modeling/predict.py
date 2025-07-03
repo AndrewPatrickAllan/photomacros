@@ -5,6 +5,7 @@ from loguru import logger
 from tqdm import tqdm
 import numpy as np
 
+
 # imported ourselves --------
 import torch
 from torch.utils.data import DataLoader
@@ -17,7 +18,7 @@ from train import load_data, get_model_architecture,get_validation_transforms # 
 # <<<<<<< HEAD
 # from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,  BATCH_SIZE,NUM_EPOCHS,MEAN,STD # IMAGE_SIZE,
 # =======
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,initial_image_size, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
+from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR,initial_image_size, BATCH_SIZE,NUM_EPOCHS,MEAN,STD, FIGURES_DIR
 # >>>>>>> Checkdatasplit
 from torchvision import datasets, transforms
 IMAGE_SIZE=initial_image_size
@@ -25,7 +26,6 @@ IMAGE_SIZE=initial_image_size
 # Set device globally
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
-
 
 
 app = typer.Typer()
@@ -43,17 +43,17 @@ def load_model_into_eval_model( model_path: Path):
     """
    
 
-    logger.info(f"Loading number of classes from {MODELS_DIR}/num_classes.txt...")
-    with open(MODELS_DIR / "num_classes.txt", "r") as f:
-        num_classes = int(f.read().strip())
+    # logger.info(f"Loading number of classes from {MODELS_DIR}/num_classes.txt...")
+    # with open(MODELS_DIR / "num_classes.txt", "r") as f:
+    #     num_classes = int(f.read().strip())
+    num_classes = 101
 
     # Initialize the model
     logger.info("Initializing model architecture...")
-# <<<<<<< HEAD
-    model = get_model_architecture(num_classes).to(device)
-# =======
-#     model = get_model_architecture(num_classes)
-# >>>>>>> Checkdatasplit
+    model = get_model_architecture(num_classes)
+    print(f"Model architecture: {model}")
+
+
 
     # Load trained model
     logger.info(f"Loading trained model from {model_path}...")
@@ -85,16 +85,15 @@ def perform_inference(
     """
 
     model=load_model_into_eval_model(model_path)
+    model.to(device)
 
     # Load test dataset
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset=torch.load(test_data_path)
 
-# <<<<<<< HEAD
-    test_dataset.transform = get_validation_transforms(image_size=228/2.0)  #  image transformations (should match the preprocessing used in training)
-# =======
-#     test_dataset.transform = get_validation_transforms(IMAGE_SIZE)
-# >>>>>>> Checkdatasplit
+
+    test_dataset.transform = get_validation_transforms(IMAGE_SIZE)
+
 
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=False)
 
@@ -115,12 +114,14 @@ def perform_inference(
             print (f"Labels: {labels}")
             #print(f"Raw model outputs: {outputs[:5]}")  # Print first 5 predictions
             predicted_classes = outputs.argmax(dim=1)
-            print(f"Predicted classes: {predicted_classes[:31]}")
+            print(f"Predicted classes: {predicted_classes[:2]}")
                     # Compare predictions with the labels
             correct += (predicted_classes == labels).sum().item()
             total += labels.size(0)
             predictions.extend(predicted_classes.cpu().numpy())
-            #print(f"Predicted classes: {predictions}")
+            print(f"Predicted classes: {predictions}")
+
+    
     accuracy = correct / total
     print(f"Accuracy for model_{NUM_EPOCHS}epochs.pkl : {accuracy:.4f}")
 
@@ -147,7 +148,7 @@ def save_test_labels(
     """
     logger.info(f"Loading test dataset from {test_data_path}...")
     test_dataset=torch.load(test_data_path)
-    test_dataset.dataset.transform = get_validation_transforms()
+    test_dataset.dataset.transform = get_validation_transforms(IMAGE_SIZE)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     logger.info("Extracting ground truth labels from test_loader...")
@@ -160,10 +161,85 @@ def save_test_labels(
         test_labels.extend(labels.cpu().numpy())  # Convert labels to list
         test_images.extend([f"Image_{batch_idx * BATCH_SIZE + i}" for i in range(len(labels))])  # Generate image names
 
-    # Ensure number of predictions and labels match
-    if len(predictions) != len(test_labels):
-        logger.error("Mismatch between number of predictions and test labels!")
-        raise ValueError("Mismatch between predictions and test labels.")
+    # # Ensure number of predictions and labels match
+    # if len(predictions) != len(test_labels):
+    #     logger.error("Mismatch between number of predictions and test labels!")
+    #     raise ValueError("Mismatch between predictions and test labels.")
+    
+    logger.info("Making confusion matrix.")
+    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import seaborn as sns
+
+    # Generate confusion matrix
+    y_true = np.array(test_labels)
+    y_pred = np.array(predictions)
+
+    # saving y_true and y_pred for later use
+    np.save(MODELS_DIR / "y_true.npy", y_true)
+    np.save(MODELS_DIR / "y_pred.npy", y_pred)
+
+    print(f"y_true shape: {y_true.shape}, y_pred shape: {y_pred.shape}")
+    print(f"y_true: {y_true[:5]}, y_pred: {y_pred[:5]}")  # Print first 5 values for debugging
+    print(y_pred[:5])
+
+    # opening y_true and y_pred
+    y_true = np.load(MODELS_DIR / "y_true.npy")
+    y_pred = np.load(MODELS_DIR / "y_pred.npy")
+
+    cm = confusion_matrix(y_true, y_pred, labels=np.arange(101))
+
+    # cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+    cm_normalized = cm.astype('float') / cm.sum(axis=1, keepdims=True)
+    cm=cm_normalized
+
+    print('CM::',np.round(cm_normalized[:5, :5], 2))
+
+
+    # # Optionally normalize
+    # cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    class_names = test_dataset.dataset.classes
+
+    cm_slice = cm[:30, :30]
+    class_names_slice = class_names[:30]
+
+    plt.figure(figsize=(15, 12))
+    sns.heatmap(cm_slice, annot=True, fmt=".2f", cmap="Blues",
+            xticklabels=class_names_slice, yticklabels=class_names_slice)
+
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Confusion Matrix (First 30 Classes)")
+    plt.xticks(rotation=90)
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.savefig(FIGURES_DIR  / "confusion_matrix.png")
+    plt.show()
+
+    # # Display
+    # disp = ConfusionMatrixDisplay(confusion_matrix=cm_normalized, display_labels=test_dataset.dataset.classes)
+    # fig, ax = plt.subplots(figsize=(20, 20))  
+    # disp.plot(ax=ax, cmap='viridis', xticks_rotation=90)
+    # plt.show()
+
+
+
+
+    # from sklearn.metrics import classification_report
+    # import pandas as pd
+    # import seaborn as sns
+
+    # report = classification_report(y_true, y_pred, output_dict=True)
+    # df_report = pd.DataFrame(report).transpose()
+
+    # plt.figure(figsize=(18, 10))
+    # sns.heatmap(df_report.iloc[:-1, :-1], annot=True, cmap='coolwarm')
+    # plt.title("Classification Report Heatmap")
+    # plt.show()
+
+
 
     # Create DataFrame
     test_df = pd.DataFrame({
@@ -181,7 +257,7 @@ def save_test_labels(
 
 @app.command()
 def main(
-    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet.pkl",
+    model_path: Path =MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
     predictions_path: Path = MODELS_DIR / "test_predictions.pt",
     test_data_path: Path = MODELS_DIR/ "test_data.pt",
     test_labels_output_path: Path = MODELS_DIR / "test_labels.csv"
@@ -204,6 +280,10 @@ def main(
     logger.info(f"Saving predictions with corresponding labels to {test_labels_output_path}...")
     save_test_labels(predictions, test_data_path, test_labels_output_path)
     logger.success("Inference process completed.")
+
+          
+
+   
 
 
 if __name__ == "__main__":

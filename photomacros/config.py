@@ -37,15 +37,15 @@ FIGURES_DIR = REPORTS_DIR / "figures"                   # Directory for report f
 
 # Image processing constants
 # IMAGE_SIZE = 128  # Image size used for training 
-initial_image_size=228/2.0
+initial_image_size=224 #228/2.0
 max_image_size=428
-patience=20
+patience=1
 MEAN = [0.485, 0.456, 0.406]  # Mean values for image normalization
 STD = [0.229, 0.224, 0.225]   # Standard deviation values for image normalization
 
 # Model training constants
-BATCH_SIZE = 64     # Number of samples in each batch
-NUM_EPOCHS = 5
+BATCH_SIZE = 32     # 64 is high for 16GB GPU, 32 more reasonable
+NUM_EPOCHS = 4
 
   # Number of epochs for training (quicker test configuration)
 
