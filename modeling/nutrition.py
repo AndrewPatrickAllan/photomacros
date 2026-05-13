@@ -17,16 +17,12 @@ def get_nutrition_info(food_label, weight_grams=False):
     Returns:
         pd.DataFrame: DataFrame containing nutrition information for the specified food item.
     """
-    df_specific = nutrition_df.loc[nutrition_df['label'] == food_label]
-    if weight_grams != False:
-        df_specific =  df_specific.loc[nutrition_df['weight'] == weight_grams]
+    df_specific = nutrition_df.loc[nutrition_df["label"] == food_label]
+    if weight_grams:
+        df_specific = df_specific.loc[nutrition_df["weight"] == weight_grams]
     print(df_specific)
     return df_specific
 
+
 # food_label='beef_tartare'
 # get_nutrition_info(food_label, weight_grams=False)
-
-
-
-
-

@@ -14,16 +14,15 @@ from pathlib import Path
 
 import typer
 from loguru import logger
-from tqdm import tqdm
-from torch.utils.data import random_split, DataLoader
 from photomacros.config import PROCESSED_DATA_DIR
 
 app = typer.Typer()
 
+
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,  # Path to the input directory containing the dataset
-    output_path: Path = PROCESSED_DATA_DIR  # Path to the output directory where features will be saved
+    output_path: Path = PROCESSED_DATA_DIR,  # Path to the output directory where features will be saved
 ):
     """
     Placeholder function for generating features from a dataset.
@@ -52,6 +51,7 @@ def main(
 
     # Log the completion of feature generation
     logger.success("Features generation complete.")
+
 
 if __name__ == "__main__":
     app()
