@@ -15,10 +15,10 @@
 # def load_predictions(predictions_path):
 #     """
 #     Load predictions saved as a PyTorch tensor file.
-    
+
 #     Args:
 #         predictions_path (Path): Path to the saved predictions file (.pt).
-    
+
 #     Returns:
 #         torch.Tensor: Predictions as a PyTorch tensor.
 #     """
@@ -28,10 +28,10 @@
 # def load_ground_truth(test_labels_path):
 #     """
 #     Load ground truth labels for the test dataset.
-    
+
 #     Args:
 #         test_labels_path (Path): Path to the CSV file containing the ground truth labels.
-    
+
 #     Returns:
 #         pd.DataFrame: A pandas DataFrame containing the test labels.
 #                       Assumes the CSV contains a column "ground_truth_label".
@@ -42,11 +42,11 @@
 # def evaluate_predictions(predictions, ground_truth_labels):
 #     """
 #     Compare the model's predictions with ground truth labels and calculate evaluation metrics.
-    
+
 #     Args:
 #         predictions (torch.Tensor or list): Predicted class indices (output from the model).
 #         ground_truth_labels (pd.DataFrame): DataFrame containing the ground truth labels. Expects a column "ground_truth_label".
-    
+
 #     Returns:
 #         tuple: (accuracy, report)
 #                - accuracy (float): Overall accuracy score as a decimal.
@@ -72,12 +72,12 @@
 # ):
 #     """
 #     Main function to evaluate predictions and save the metrics as a JSON file.
-    
+
 #     Args:
 #         predictions_path (Path): path to the .pt file containing the model's predictions.
 #         test_labels_path (Path): path to the CSV file containing ground truth labels.
 #         metrics_output_path (Path): path to save the evaluation metrics as a JSON file.
-    
+
 #     Outputs:
 #         Saves the evaluation metrics (accuracy and classification report) to the specified JSON file.
 #     """

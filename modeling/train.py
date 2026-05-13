@@ -16,29 +16,39 @@ Modules:
     - torch and torchvision: PyTorch libraries for deep learning.
     - photomacros: Custom dataset utilities.
 """
+
 import sys
 import os
-sys.path.append(os.path.abspath('/Users/allan/Documents/GitHub/photomacros'))
+
+sys.path.append(os.path.abspath("/Users/allan/Documents/GitHub/photomacros"))
 
 from pathlib import Path
 import typer
 from loguru import logger
 from tqdm import tqdm
-from torch.utils.data import random_split,DataLoader, Subset, WeightedRandomSampler
-from photomacros.config import MODELS_DIR, PROCESSED_DATA_DIR, MEAN, STD, BATCH_SIZE, NUM_EPOCHS, initial_image_size, max_image_size, patience
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+from photomacros.config import (
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    MEAN,
+    STD,
+    BATCH_SIZE,
+    NUM_EPOCHS,
+    initial_image_size,
+    max_image_size,
+    patience,
+)
 import torchvision.models as models
+
 # Additional imports for PyTorch and data handling
 import torch
 from torchvision import datasets, transforms
 
-from photomacros import dataset  # Custom dataset module
 import random
-from torch.utils.checkpoint import checkpoint
 
 from collections import defaultdict
 from collections import Counter
 
-from torch.utils.data import Subset
 import pickle
 
 
@@ -46,6 +56,8 @@ import pickle
 app = typer.Typer()
 
 torch.backends.mps.allow_tf32 = True
+
+
 def get_augmentation_transforms(image_size):
     """
     Define and return data augmentation transformations for training.
@@ -53,22 +65,29 @@ def get_augmentation_transforms(image_size):
     Returns:
         torchvision.transforms.Compose: A sequence of augmentations to apply to training data.
     """
-    return transforms.Compose([
-    transforms.RandomRotation(degrees=30),  # Less rotation (better for natural images)
-    transforms.RandomHorizontalFlip(),  
-    transforms.RandomResizedCrop(image_size),  # Less aggressive cropping
-    #transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Less extreme changes
-    transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 0.5)),  # Less blur effect
-    #transforms.RandomErasing(p=0.05, scale=(0.02, 0.08)),  # Less frequent and smaller erasing
-    transforms.ToTensor(),
-    transforms.Normalize(mean=MEAN, std=STD)
-])
+    return transforms.Compose(
+        [
+            transforms.RandomRotation(
+                degrees=30
+            ),  # Less rotation (better for natural images)
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomResizedCrop(image_size),  # Less aggressive cropping
+            # transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Less extreme changes
+            transforms.GaussianBlur(
+                kernel_size=(3, 3), sigma=(0.1, 0.5)
+            ),  # Less blur effect
+            # transforms.RandomErasing(p=0.05, scale=(0.02, 0.08)),  # Less frequent and smaller erasing
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEAN, std=STD),
+        ]
+    )
 
 
 # Define a separate function to replace the lambda
 # def process_ten_crop(crops):
 #     """Convert each crop to a tensor and normalize it."""
 #     return torch.stack([transforms.Normalize(mean=MEAN, std=STD)(transforms.ToTensor()(crop)) for crop in crops])
+
 
 def get_validation_transforms(image_size):
     """
@@ -77,15 +96,21 @@ def get_validation_transforms(image_size):
     Returns:
         torchvision.transforms.Compose: Transformations to apply to validation and test data.
     """
-    return transforms.Compose([
-        transforms.Resize(int(image_size * 1.12)),  # Resize slightly larger to keep aspect ratio
-        transforms.CenterCrop(image_size),  # Crop to exact size
-        transforms.ToTensor(),              
-        transforms.Normalize(mean=MEAN, std=STD)
-        ]) 
+    return transforms.Compose(
+        [
+            transforms.Resize(
+                int(image_size * 1.12)
+            ),  # Resize slightly larger to keep aspect ratio
+            transforms.CenterCrop(image_size),  # Crop to exact size
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEAN, std=STD),
+        ]
+    )
 
 
-def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+def split_data(
+    input_data_dir, num_classes, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2
+):
     """
     Split the dataset into training, validation, and testing sets while preserving class ratios.
 
@@ -100,18 +125,17 @@ def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_
     """
     dataset = datasets.ImageFolder(input_data_dir)  # Load dataset without transform
     torch.manual_seed(42)
-# Get class names (folder names)
-    class_names = dataset.classes  
+    # Get class names (folder names)
+    class_names = dataset.classes
 
-
-# Initialize a dictionary to store one image per class
+    # Initialize a dictionary to store one image per class
     seen_classes = {}
 
-# Iterate through dataset
+    # Iterate through dataset
     for image_path, label in dataset.samples:
         folder_name = image_path.split("/")[-2]  # Extract folder name (label)
-    
-    # Only print the first image for each class
+
+        # Only print the first image for each class
         if folder_name not in seen_classes:
             seen_classes[folder_name] = image_path
             print(f"Class: {label} | Image Path: {image_path}")
@@ -121,7 +145,7 @@ def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_
         # img = Image.open(image_path)
         # img.show()  # This will pop up the image
 
-    # Stop after printing one image for each class
+        # Stop after printing one image for each class
         if len(seen_classes) == len(class_names):
             break
 
@@ -133,7 +157,11 @@ def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_
     selected_classes = random.sample(list(class_indices.keys()), num_classes)
 
     # Filter the indices to only include the selected classes
-    filtered_class_indices = {label: indices for label, indices in class_indices.items() if label in selected_classes}
+    filtered_class_indices = {
+        label: indices
+        for label, indices in class_indices.items()
+        if label in selected_classes
+    }
     train_indices, val_indices, test_indices = [], [], []
 
     # Split each class separately
@@ -141,7 +169,6 @@ def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_
         num_samples = len(indices)
         train_size = int(train_ratio * num_samples)
         val_size = int(val_ratio * num_samples)
-        test_size =  int(test_ratio * num_samples) # Ensure total matches
 
         # Shuffle indices before splitting
         indices = torch.tensor(indices)
@@ -149,24 +176,28 @@ def split_data(input_data_dir,num_classes, train_ratio=0.6, val_ratio=0.2, test_
 
         # Assign indices to each set
         train_indices.extend(indices[:train_size].tolist())
-        val_indices.extend(indices[train_size:train_size + val_size].tolist())
-        test_indices.extend(indices[train_size + val_size:].tolist())
+        val_indices.extend(indices[train_size : train_size + val_size].tolist())
+        test_indices.extend(indices[train_size + val_size :].tolist())
 
     return dataset, train_indices, val_indices, test_indices
+
+
 def get_class_weights(dataset, indices):
     """Compute class weights for imbalanced datasets based on given indices."""
     labels = [dataset.samples[i][1] for i in indices]  # Extract labels for the subset
     class_counts = Counter(labels)
     total_samples = sum(class_counts.values())
-    
+
     # Compute inverse frequency weights
     class_weights = {cls: total_samples / count for cls, count in class_counts.items()}
-    
+
     # Assign weight to each sample in the subset
     sample_weights = [class_weights[dataset.samples[i][1]] for i in indices]
-    
+
     return sample_weights
-def load_data(input_data_dir,num_classes, image_size):
+
+
+def load_data(input_data_dir, num_classes, image_size):
     """
     Load the dataset, apply transformations, and save test data for inference.
 
@@ -176,7 +207,9 @@ def load_data(input_data_dir,num_classes, image_size):
     Returns:
         tuple: DataLoaders for training, validation, and testing datasets.
     """
-    dataset, train_indices, val_indices, test_indices = split_data(input_data_dir, num_classes)
+    dataset, train_indices, val_indices, test_indices = split_data(
+        input_data_dir, num_classes
+    )
 
     # Create subsets after splitting
     train_dataset = Subset(dataset, train_indices)
@@ -185,7 +218,9 @@ def load_data(input_data_dir,num_classes, image_size):
 
     # Apply appropriate transformations
     train_dataset.dataset.transform = get_augmentation_transforms(image_size)
-    val_dataset.dataset.transform = get_validation_transforms(image_size) # Note this is not actually performing augmentation / transformations on validation data
+    val_dataset.dataset.transform = get_validation_transforms(
+        image_size
+    )  # Note this is not actually performing augmentation / transformations on validation data
     test_dataset.dataset.transform = get_validation_transforms(image_size)
 
     # Save datasets
@@ -198,18 +233,29 @@ def load_data(input_data_dir,num_classes, image_size):
     sample_weights = get_class_weights(dataset, train_indices)
 
     # Create a WeightedRandomSampler
-    sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+    sampler = WeightedRandomSampler(
+        sample_weights, num_samples=len(sample_weights), replacement=True
+    )
 
     # Create DataLoaders with and without sampling
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4, sampler=sampler)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False)
+    train_loader = DataLoader(
+        train_dataset, batch_size=BATCH_SIZE, num_workers=4, sampler=sampler
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=BATCH_SIZE, num_workers=4, shuffle=False
+    )
 
     return train_loader, val_loader, test_loader
 
+
 def update_optimizer_lr(optimizer, new_lr):
     for param_group in optimizer.param_groups:
-        param_group['lr'] = new_lr
+        param_group["lr"] = new_lr
+
+
 def get_model_architecture(num_classes):
     """
     Define and return the model architecture.
@@ -272,12 +318,12 @@ def get_model_architecture(num_classes):
 
     #     # Fully Connected Layers (Increased depth)
     #     torch.nn.Linear(1024, 512),
-    #     torch.nn.BatchNorm1d(512),  
+    #     torch.nn.BatchNorm1d(512),
     #     torch.nn.ReLU(),
     #     torch.nn.Dropout(0.1),
 
     #     torch.nn.Linear(512, 256),
-    #     torch.nn.BatchNorm1d(256),  
+    #     torch.nn.BatchNorm1d(256),
     #     torch.nn.ReLU(),
     #     torch.nn.Dropout(0.1),
 
@@ -291,7 +337,7 @@ def get_model_architecture(num_classes):
     #     torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),  # Extra conv layer
     #     torch.nn.BatchNorm2d(64),
     #     torch.nn.SiLU(),
-    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),  
+    #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
     #     # Second Convolutional Block
     #     torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
@@ -321,24 +367,24 @@ def get_model_architecture(num_classes):
     #     torch.nn.MaxPool2d(kernel_size=2, stride=2),
 
     #     # Global Average Pooling instead of fully connected layers
-    #     torch.nn.AdaptiveAvgPool2d((1, 1)),  
+    #     torch.nn.AdaptiveAvgPool2d((1, 1)),
     #     torch.nn.Flatten(),
 
     #     # Fully Connected Layers
     #     torch.nn.Linear(384, 256),
-    #     torch.nn.BatchNorm1d(256),  
+    #     torch.nn.BatchNorm1d(256),
     #     torch.nn.SiLU(),
     #     torch.nn.Dropout(0.3),  # Only one dropout here
 
     #     torch.nn.Linear(256, 128),
-    #     torch.nn.BatchNorm1d(128),  
+    #     torch.nn.BatchNorm1d(128),
     #     torch.nn.SiLU(),
 
     #     torch.nn.Linear(128, num_classes)
     # )
     # Testing using pretained models - transfer learning is better?
-    #model = models.densenet201(weights=models.DenseNet201_Weights.IMAGENET1K_V1)  # Load pretrained model
-    #num_features = model.classifier.in_features  # Get the number of input features to the classifier
+    # model = models.densenet201(weights=models.DenseNet201_Weights.IMAGENET1K_V1)  # Load pretrained model
+    # num_features = model.classifier.in_features  # Get the number of input features to the classifier
     # for param in model.parameters():
     #     param.requires_grad = False
 
@@ -358,9 +404,10 @@ def get_model_architecture(num_classes):
 
     # return model
 
-
-    model = models.densenet161(weights=models.DenseNet161_Weights.IMAGENET1K_V1)  
-    num_features = model.classifier.in_features  # Get the number of input features to the classifier
+    model = models.densenet161(weights=models.DenseNet161_Weights.IMAGENET1K_V1)
+    num_features = (
+        model.classifier.in_features
+    )  # Get the number of input features to the classifier
 
     # Freeze all layers first
     for param in model.parameters():
@@ -368,38 +415,33 @@ def get_model_architecture(num_classes):
     for param in model.features[-4:].parameters():
         param.requires_grad = True
     # Replace classifier with a new one
-#     model.classifier = torch.nn.Sequential(
-#     torch.nn.Linear(num_features, 512),
-#     torch.nn.BatchNorm1d(512),
-#     torch.nn.ReLU(inplace=True),
-#     torch.nn.Dropout(0.3),  # First dropout layer
-# #maybe return batch2d1norm depedns im fitting overfitting with much maybe decrease the layers
-#     torch.nn.Linear(512, 256),
-#     torch.nn.BatchNorm1d(256),
-#     torch.nn.ReLU(inplace=True),
-#     torch.nn.Dropout(0.3),  # Second dropout layer
+    #     model.classifier = torch.nn.Sequential(
+    #     torch.nn.Linear(num_features, 512),
+    #     torch.nn.BatchNorm1d(512),
+    #     torch.nn.ReLU(inplace=True),
+    #     torch.nn.Dropout(0.3),  # First dropout layer
+    # #maybe return batch2d1norm depedns im fitting overfitting with much maybe decrease the layers
+    #     torch.nn.Linear(512, 256),
+    #     torch.nn.BatchNorm1d(256),
+    #     torch.nn.ReLU(inplace=True),
+    #     torch.nn.Dropout(0.3),  # Second dropout layer
 
-#     torch.nn.Linear(256, 128),
-#     torch.nn.BatchNorm1d(128),
-#     torch.nn.ReLU(inplace=True),
-#     torch.nn.Dropout(0.3),  # Third dropout layer
+    #     torch.nn.Linear(256, 128),
+    #     torch.nn.BatchNorm1d(128),
+    #     torch.nn.ReLU(inplace=True),
+    #     torch.nn.Dropout(0.3),  # Third dropout layer
 
-#     torch.nn.Linear(128, num_classes)  # Output layer
-# )
-
+    #     torch.nn.Linear(128, num_classes)  # Output layer
+    # )
 
     model.classifier = torch.nn.Sequential(
-    torch.nn.Linear(num_features, 256),
-    torch.nn.ReLU(),
-    torch.nn.Dropout(0.3),
-    torch.nn.Linear(256, num_classes)
+        torch.nn.Linear(num_features, 256),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.3),
+        torch.nn.Linear(256, num_classes),
     )
 
     return model
-
-
-
-
 
 
 def evaluate_validation_loss(val_loader, model, criterion):
@@ -425,8 +467,11 @@ def evaluate_validation_loss(val_loader, model, criterion):
 
     with torch.no_grad():  # No need to compute gradients during evaluation
         for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)  # Move data to the appropriate device
-            
+            images, labels = (
+                images.to(device),
+                labels.to(device),
+            )  # Move data to the appropriate device
+
             # Forward pass through the model
             outputs = model(images)
 
@@ -454,15 +499,20 @@ def evaluate_validation_loss(val_loader, model, criterion):
     top1_acc = (correct_top1 / total) * 100 if total > 0 else 0
     top5_acc = (correct_top5 / total) * 100 if total > 0 else 0
 
-    return avg_loss, top1_acc, top5_acc  # Return all values: loss, top-1, and top-5 accuracies
-
-
+    return (
+        avg_loss,
+        top1_acc,
+        top5_acc,
+    )  # Return all values: loss, top-1, and top-5 accuracies
 
 
 def train_model(
-        # train_loader, val_loader, 
-        input_path, 
-        initial_image_size, max_image_size, patience):
+    # train_loader, val_loader,
+    input_path,
+    initial_image_size,
+    max_image_size,
+    patience,
+):
     """
     Train the model using the training DataLoader. Increase image size if loss stagnates.
 
@@ -479,39 +529,41 @@ def train_model(
     # Automatically detect the best device
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     logger.success(f"Using device: {device}")
-    num_classes = 101#len(train_loader.dataset.dataset.classes)
-    image_size=initial_image_size
-    train_loader, val_loader, test_loader = load_data(input_path,num_classes,image_size=image_size)
+    num_classes = 101  # len(train_loader.dataset.dataset.classes)
+    image_size = initial_image_size
+    train_loader, val_loader, test_loader = load_data(
+        input_path, num_classes, image_size=image_size
+    )
 
     # Model setup
-    
+
     model = get_model_architecture(num_classes).to(device)
 
-    optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=0.001,betas=(0.9,0.999),weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(
+        model.classifier.parameters(), lr=0.001, betas=(0.9, 0.999), weight_decay=1e-4
+    )
     criterion = torch.nn.CrossEntropyLoss()
-    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=7)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=3, verbose=True)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=7)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.3, patience=3, verbose=True
+    )
 
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     patience_counter = 0
     best_model_state = None
     epoch_since_last_improvement = 0
     image_size_increased = False  # Prevent further increases
     model.train()
 
-
-
-
     # Initialize history for tracking metrics
     history = {
-    'train_loss': [],
-    'val_loss': [],
-    'top1_acc': [],
-    'top5_acc': [],
-    'epoch;': [],
-    'image_size': []
+        "train_loss": [],
+        "val_loss": [],
+        "top1_acc": [],
+        "top5_acc": [],
+        "epoch;": [],
+        "image_size": [],
     }
-    
 
     for epoch in range(NUM_EPOCHS):
         # Increase image size & unfreeze layers only once after epoch 2-5
@@ -520,27 +572,35 @@ def train_model(
             for param in model.features[-4:].parameters():
                 param.requires_grad = True
 
-        
         if epoch >= 5 and not image_size_increased and image_size < max_image_size:
-            new_image_size = min(image_size + 100, max_image_size)  # Ensure it doesn't exceed max
-            logger.info(f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 6 layers (instead of 4).")
-            
+            new_image_size = min(
+                image_size + 100, max_image_size
+            )  # Ensure it doesn't exceed max
+            logger.info(
+                f"Increasing image size from {image_size} to {new_image_size} and unfreezing last 6 layers (instead of 4)."
+            )
+
             image_size = new_image_size
             image_size_increased = True  # Prevent further increases
-            train_loader.dataset.transform = get_augmentation_transforms(image_size=image_size)
-            val_loader.dataset.transform = get_validation_transforms(image_size=image_size)
+            train_loader.dataset.transform = get_augmentation_transforms(
+                image_size=image_size
+            )
+            val_loader.dataset.transform = get_validation_transforms(
+                image_size=image_size
+            )
             # Unfreeze last 6 layers
             for param in model.features[-6:].parameters():
                 param.requires_grad = True
-            
 
-
-        progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}")
+        progress_bar = tqdm(
+            enumerate(train_loader),
+            total=len(train_loader),
+            desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}",
+        )
         train_loss = 0.0
 
         for batch_idx, (images, labels) in progress_bar:
             images, labels = images.to(device), labels.to(device)
-            
 
             optimizer.zero_grad()
             outputs = model(images)
@@ -552,29 +612,33 @@ def train_model(
             train_loss += loss.item()
             progress_bar.set_postfix({"Train Loss": f"{loss.item():.4f}"})
 
-        avg_val_loss, top1_acc, top5_acc = evaluate_validation_loss(val_loader, model, criterion)
-        logger.info(f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}")
-        #scheduler.step(avg_val_loss)
+        avg_val_loss, top1_acc, top5_acc = evaluate_validation_loss(
+            val_loader, model, criterion
+        )
+        logger.info(
+            f"Epoch {epoch + 1}: Train Loss = {train_loss / len(train_loader):.4f}, Val Loss = {avg_val_loss:.4f}, Top-1 Acc = {top1_acc:.2f}, Top-5 Acc = {top5_acc:.2f}"
+        )
+        # scheduler.step(avg_val_loss)
 
         # Step scheduler
-        scheduler.step(avg_val_loss)  # scheduler for learning rate adjustment
+        scheduler.step(avg_val_loss)  # scheduler for learning rate adjustment
 
         # Update history
-        history['train_loss'].append(train_loss / len(train_loader))
-        history['val_loss'].append(avg_val_loss)
-        history['top1_acc'].append(top1_acc)
-        history['top5_acc'].append(top5_acc)
-        history['epoch;'].append(epoch + 1)
-        history['image_size'].append(image_size)
+        history["train_loss"].append(train_loss / len(train_loader))
+        history["val_loss"].append(avg_val_loss)
+        history["top1_acc"].append(top1_acc)
+        history["top5_acc"].append(top5_acc)
+        history["epoch;"].append(epoch + 1)
+        history["image_size"].append(image_size)
 
-        # saving histroy of epoch number and accuracies (rewrites every epoch so have latest saved if stopped model run early)
-        history_path = Path(MODELS_DIR / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl")
-        with open(history_path, 'wb') as f:
+        # saving histroy of epoch number and accuracies (rewrites every epoch so have latest saved if stopped model run early)
+        history_path = Path(
+            MODELS_DIR
+            / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl"
+        )
+        with open(history_path, "wb") as f:
             pickle.dump(history, f)
         logger.success(f"Training history saved to {history_path}.")
-
-
-
 
         # If the validation loss has improved, save the model state
         if avg_val_loss < best_val_loss:
@@ -588,19 +652,16 @@ def train_model(
             epoch_since_last_improvement += 1
             logger.info(f"No improvement for {patience_counter} epochs.")
 
-
-
-
-
     model.load_state_dict(best_model_state)
 
-
     return model
+
+
 @app.command()
 def main(
     input_path: Path = PROCESSED_DATA_DIR,
-    model_path: Path = MODELS_DIR / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl"
-
+    model_path: Path = MODELS_DIR
+    / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
 ):
     """
     Main function to train the model and save the trained model.
@@ -610,7 +671,9 @@ def main(
         model_path (Path): Path to save the trained model.
     """
     logger.info("Starting training process...")
-    trained_model = train_model( input_path, initial_image_size, max_image_size, patience)
+    trained_model = train_model(
+        input_path, initial_image_size, max_image_size, patience
+    )
     torch.save(trained_model.state_dict(), model_path)
     logger.success(f"Model saved to {model_path}.")
 

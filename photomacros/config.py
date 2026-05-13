@@ -8,12 +8,7 @@ This script:
 """
 
 from pathlib import Path
-import os
 from dotenv import load_dotenv
-from loguru import logger
-import torch
-import pickle
-
 
 
 # Load environment variables from a .env file, if it exists
@@ -21,33 +16,34 @@ load_dotenv()
 
 # Paths
 PROJ_ROOT = Path(__file__).resolve().parents[1]
-#logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
-
+# logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
 
 # Define data directories
-DATA_DIR = Path("~/Documents/GitHub/data").expanduser()  # Path to the main data directory
-RAW_DATA_DIR = DATA_DIR / "raw"                         # Directory for raw, unprocessed data
-INTERIM_DATA_DIR = DATA_DIR / "interim"                 # Directory for interim data during processing
-PROCESSED_DATA_DIR = DATA_DIR / "processed"             # Directory for fully processed data
-EXTERNAL_DATA_DIR = DATA_DIR / "external"               # Directory for external data sources
-MODELS_DIR = PROJ_ROOT / "models"                       # Directory for saving and loading models
-REPORTS_DIR = PROJ_ROOT / "reports"                     # Directory for reports
-FIGURES_DIR = REPORTS_DIR / "figures"                   # Directory for report figures
+DATA_DIR = Path(
+    "~/Documents/GitHub/data"
+).expanduser()  # Path to the main data directory
+RAW_DATA_DIR = DATA_DIR / "raw"  # Directory for raw, unprocessed data
+INTERIM_DATA_DIR = DATA_DIR / "interim"  # Directory for interim data during processing
+PROCESSED_DATA_DIR = DATA_DIR / "processed"  # Directory for fully processed data
+EXTERNAL_DATA_DIR = DATA_DIR / "external"  # Directory for external data sources
+MODELS_DIR = PROJ_ROOT / "models"  # Directory for saving and loading models
+REPORTS_DIR = PROJ_ROOT / "reports"  # Directory for reports
+FIGURES_DIR = REPORTS_DIR / "figures"  # Directory for report figures
 
 # Image processing constants
-# IMAGE_SIZE = 128  # Image size used for training 
-initial_image_size=224 #228/2.0
-max_image_size=428
-patience=1
+# IMAGE_SIZE = 128  # Image size used for training
+initial_image_size = 224  # 228/2.0
+max_image_size = 428
+patience = 1
 MEAN = [0.485, 0.456, 0.406]  # Mean values for image normalization
-STD = [0.229, 0.224, 0.225]   # Standard deviation values for image normalization
+STD = [0.229, 0.224, 0.225]  # Standard deviation values for image normalization
 
 # Model training constants
-BATCH_SIZE = 32     # 64 is high for 16GB GPU, 32 more reasonable
+BATCH_SIZE = 32  # 64 is high for 16GB GPU, 32 more reasonable
 NUM_EPOCHS = 4
 
-  # Number of epochs for training (quicker test configuration)
+# Number of epochs for training (quicker test configuration)
 
 # Path for saved test data
-#test_data_path = MODELS_DIR / "test_data.pt"  # Path to saved test dataset for inference
+# test_data_path = MODELS_DIR / "test_data.pt"  # Path to saved test dataset for inference
