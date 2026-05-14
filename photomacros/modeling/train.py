@@ -520,6 +520,7 @@ def train_model(
     initial_image_size,
     max_image_size,
     patience,
+    num_epochs=NUM_EPOCHS,
 ):
     """
     Train the model using the training DataLoader. Increase image size if loss stagnates.
@@ -579,7 +580,7 @@ def train_model(
         "image_size": [],
     }
 
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(num_epochs):
         # Increase image size & unfreeze layers only once after epoch 2-5
         if epoch >= 1 and epoch < 4:
             # Unfreeze last 4 layers
@@ -686,12 +687,9 @@ def main(
         model_path (Path): Path to save the trained model.
         num_epochs (int): Number of training epochs (overrides config default).
     """
-    import photomacros.config as _cfg
-
-    _cfg.NUM_EPOCHS = num_epochs
     logger.info("Starting training process...")
     trained_model = train_model(
-        input_path, initial_image_size, max_image_size, patience
+        input_path, initial_image_size, max_image_size, patience, num_epochs
     )
     torch.save(trained_model.state_dict(), model_path)
     logger.success(f"Model saved to {model_path}.")
