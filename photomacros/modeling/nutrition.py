@@ -1,7 +1,8 @@
-from pathlib import Path
 import pandas as pd
 
-nutrition_path = Path("~/Documents/GitHub/photomacros/nutrition.csv")
+from photomacros.config import EXTERNAL_DATA_DIR
+
+nutrition_path = EXTERNAL_DATA_DIR / "nutrition.csv"
 nutrition_df = pd.read_csv(nutrition_path)
 # print(nutrition_df.head())
 # print(nutrition_df.info())

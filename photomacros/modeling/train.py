@@ -224,9 +224,9 @@ def load_data(input_data_dir, num_classes, image_size):
     test_dataset.dataset.transform = get_validation_transforms(image_size)
 
     # Save datasets
-    torch.save(test_dataset, MODELS_DIR / "test_data.pt")
-    torch.save(val_dataset, MODELS_DIR / "val_data.pt")
-    torch.save(train_dataset, MODELS_DIR / "train_data.pt")
+    torch.save(test_dataset, PROCESSED_DATA_DIR / "test_data.pt")
+    torch.save(val_dataset, PROCESSED_DATA_DIR / "val_data.pt")
+    torch.save(train_dataset, PROCESSED_DATA_DIR / "train_data.pt")
     logger.success(f"Datasets saved to {MODELS_DIR}")
 
     # Compute sample weights for training data
