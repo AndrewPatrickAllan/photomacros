@@ -6,7 +6,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 # imported ourselves --------
 import torch
-from train import (
+from photomacros.modeling.train import (
     get_validation_transforms,
 )  # Importing own existing load_data function from train.py
 

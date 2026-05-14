@@ -9,7 +9,7 @@ import numpy as np
 # imported ourselves --------
 import torch
 from torch.utils.data import DataLoader
-from train import (
+from photomacros.modeling.train import (
     get_model_architecture,
     get_validation_transforms,
 )  # Importing own existing load_data function from train.py

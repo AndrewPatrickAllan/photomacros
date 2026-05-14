@@ -16,7 +16,7 @@ Train
 -----
 The training module handles the model training pipeline.
 
-.. automodule:: modeling.train
+.. automodule:: photomacros.modeling.train
     :members:
     :undoc-members:
     :show-inheritance:
@@ -26,7 +26,7 @@ Predict
 -------
 The prediction module handles generating predictions from the trained model.
 
-.. automodule:: modeling.predict
+.. automodule:: photomacros.modeling.predict
     :members:
     :undoc-members:
     :show-inheritance:
@@ -36,7 +36,7 @@ Evaluate
 --------
 The evaluation module is responsible for assessing model performance.
 
-.. automodule:: modeling.evaluate
+.. automodule:: photomacros.modeling.evaluate
     :members:
     :undoc-members:
     :show-inheritance:
