@@ -676,6 +676,7 @@ def main(
     input_path: Path = RAW_DATA_DIR / "archive/food-101/food-101/images",
     model_path: Path = MODELS_DIR
     / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
+    num_epochs: int = NUM_EPOCHS,
 ):
     """
     Main function to train the model and save the trained model.
@@ -683,7 +684,11 @@ def main(
     Args:
         input_path (Path): Path to the input dataset directory.
         model_path (Path): Path to save the trained model.
+        num_epochs (int): Number of training epochs (overrides config default).
     """
+    import photomacros.config as _cfg
+
+    _cfg.NUM_EPOCHS = num_epochs
     logger.info("Starting training process...")
     trained_model = train_model(
         input_path, initial_image_size, max_image_size, patience
