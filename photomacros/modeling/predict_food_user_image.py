@@ -10,8 +10,8 @@ from photomacros.config import (
     MODELS_DIR,
     NUM_EPOCHS,
 )  # , PROCESSED_DATA_DIR, IMAGE_SIZE, BATCH_SIZE,NUM_EPOCHS,MEAN,STD
-from modeling.predict import load_model_into_eval_model
-from modeling.nutrition import get_nutrition_info
+from photomacros.modeling.predict import load_model_into_eval_model
+from photomacros.modeling.nutrition import get_nutrition_info
 
 from pathlib import Path
 
@@ -25,7 +25,7 @@ from pathlib import Path
 
 
 # Set device globally
-from train import get_validation_transforms
+from photomacros.modeling.train import get_validation_transforms
 
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
