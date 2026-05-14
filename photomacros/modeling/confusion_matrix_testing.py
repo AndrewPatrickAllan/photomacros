@@ -11,7 +11,8 @@ from photomacros.modeling.train import (
 )  # Importing own existing load_data function from train.py
 
 from photomacros.config import (
-    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    REPORTS_DIR,
     initial_image_size,
     FIGURES_DIR,
 )
@@ -19,14 +20,14 @@ from photomacros.config import (
 IMAGE_SIZE = initial_image_size
 
 
-test_data_path: Path = (MODELS_DIR / "test_data.pt",)
+test_data_path: Path = (PROCESSED_DATA_DIR / "test_data.pt",)
 
 test_dataset = torch.load(test_data_path)
 test_dataset.dataset.transform = get_validation_transforms(IMAGE_SIZE)
 
 # opening y_true and y_pred
-y_true = np.load(MODELS_DIR / "y_true.npy")
-y_pred = np.load(MODELS_DIR / "y_pred.npy")
+y_true = np.load(REPORTS_DIR / "y_true.npy")
+y_pred = np.load(REPORTS_DIR / "y_pred.npy")
 
 cm = confusion_matrix(y_true, y_pred, labels=np.arange(101))
 

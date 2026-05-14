@@ -24,6 +24,8 @@ from photomacros.modeling.train import (
 # =======
 from photomacros.config import (
     MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    REPORTS_DIR,
     initial_image_size,
     BATCH_SIZE,
     NUM_EPOCHS,
@@ -180,8 +182,8 @@ def save_test_labels(predictions, test_data_path: Path, output_path: Path):
     y_pred = np.array(predictions)
 
     # saving y_true and y_pred for later use
-    np.save(MODELS_DIR / "y_true.npy", y_true)
-    np.save(MODELS_DIR / "y_pred.npy", y_pred)
+    np.save(REPORTS_DIR / "y_true.npy", y_true)
+    np.save(REPORTS_DIR / "y_pred.npy", y_pred)
 
     print(f"y_true shape: {y_true.shape}, y_pred shape: {y_pred.shape}")
     print(
@@ -190,8 +192,8 @@ def save_test_labels(predictions, test_data_path: Path, output_path: Path):
     print(y_pred[:5])
 
     # opening y_true and y_pred
-    y_true = np.load(MODELS_DIR / "y_true.npy")
-    y_pred = np.load(MODELS_DIR / "y_pred.npy")
+    y_true = np.load(REPORTS_DIR / "y_true.npy")
+    y_pred = np.load(REPORTS_DIR / "y_pred.npy")
 
     cm = confusion_matrix(y_true, y_pred, labels=np.arange(101))
 
@@ -266,8 +268,8 @@ def main(
     model_path: Path = MODELS_DIR
     / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
     predictions_path: Path = MODELS_DIR / "test_predictions.pt",
-    test_data_path: Path = MODELS_DIR / "test_data.pt",
-    test_labels_output_path: Path = MODELS_DIR / "test_labels.csv",
+    test_data_path: Path = PROCESSED_DATA_DIR / "test_data.pt",
+    test_labels_output_path: Path = PROCESSED_DATA_DIR / "test_labels.csv",
 ):
     """
     Main function to perform inference and save predictions with labels.
