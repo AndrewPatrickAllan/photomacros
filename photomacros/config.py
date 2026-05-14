@@ -8,11 +8,6 @@ This script:
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
-
-
-# Load environment variables from a .env file, if it exists
-load_dotenv()
 
 # Paths
 PROJ_ROOT = Path(__file__).resolve().parents[1]
