@@ -559,7 +559,7 @@ def train_model(
     criterion = torch.nn.CrossEntropyLoss()
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=7)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.3, patience=3, verbose=True
+        optimizer, mode="min", factor=0.3, patience=3
     )
 
     best_val_loss = float("inf")
