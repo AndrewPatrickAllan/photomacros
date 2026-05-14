@@ -56,7 +56,8 @@ import pickle
 # Typer CLI application
 app = typer.Typer()
 
-torch.backends.mps.allow_tf32 = True
+if torch.backends.mps.is_available():
+    torch.backends.mps.allow_tf32 = True
 
 
 def get_augmentation_transforms(image_size):
@@ -457,7 +458,13 @@ def evaluate_validation_loss(val_loader, model, criterion):
     Returns:
         tuple: (Average validation loss, Top-1 accuracy percentage, Top-5 accuracy percentage)
     """
-    device = torch.device("mps")  # Modify to your device if needed (e.g., cuda, cpu)
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
     model.to(device)
     model.eval()  # Set the model to evaluation mode
     val_loss = 0.0
@@ -528,7 +535,13 @@ def train_model(
         torch.nn.Module: Trained model.
     """
     # Automatically detect the best device
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
     logger.success(f"Using device: {device}")
     num_classes = 101  # len(train_loader.dataset.dataset.classes)
     image_size = initial_image_size
