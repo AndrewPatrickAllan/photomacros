@@ -30,6 +30,7 @@ from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from photomacros.config import (
     MODELS_DIR,
     PROCESSED_DATA_DIR,
+    RAW_DATA_DIR,
     MEAN,
     STD,
     BATCH_SIZE,
@@ -659,7 +660,7 @@ def train_model(
 
 @app.command()
 def main(
-    input_path: Path = PROCESSED_DATA_DIR,
+    input_path: Path = RAW_DATA_DIR / "archive/food-101/food-101/images",
     model_path: Path = MODELS_DIR
     / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
 ):
