@@ -610,7 +610,7 @@ def train_model(
         progress_bar = tqdm(
             enumerate(train_loader),
             total=len(train_loader),
-            desc=f"Epoch {epoch + 1}/{NUM_EPOCHS}",
+            desc=f"Epoch {epoch + 1}/{num_epochs}",
         )
         train_loss = 0.0
 
