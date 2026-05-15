@@ -23,6 +23,7 @@ import os
 sys.path.append(os.path.abspath("/Users/allan/Documents/GitHub/photomacros"))
 
 from pathlib import Path
+from typing import Optional
 import typer
 from loguru import logger
 from tqdm import tqdm
@@ -649,7 +650,7 @@ def train_model(
         # saving histroy of epoch number and accuracies (rewrites every epoch so have latest saved if stopped model run early)
         history_path = Path(
             MODELS_DIR
-            / f"HISTORY_model_{NUM_EPOCHS}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl"
+            / f"HISTORY_model_{num_epochs}epochs_init_LR_0P001_pretrainedDenseNet161_variable_LR_image_size.pkl"
         )
         with open(history_path, "wb") as f:
             pickle.dump(history, f)
@@ -675,8 +676,7 @@ def train_model(
 @app.command()
 def main(
     input_path: Path = RAW_DATA_DIR / "archive/food-101/food-101/images",
-    model_path: Path = MODELS_DIR
-    / f"model_{NUM_EPOCHS}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl",
+    model_path: Optional[Path] = None,
     num_epochs: int = NUM_EPOCHS,
 ):
     """
@@ -684,9 +684,14 @@ def main(
 
     Args:
         input_path (Path): Path to the input dataset directory.
-        model_path (Path): Path to save the trained model.
+        model_path (Path): Path to save the trained model (default: auto-named by epoch count).
         num_epochs (int): Number of training epochs (overrides config default).
     """
+    if model_path is None:
+        model_path = (
+            MODELS_DIR
+            / f"model_{num_epochs}epochs_BetterModel_LR_Earlystop_pretrainedDenseNet_Overfit.pkl"
+        )
     logger.info("Starting training process...")
     trained_model = train_model(
         input_path, initial_image_size, max_image_size, patience, num_epochs
