@@ -10,6 +10,9 @@ sklearn-env/
 .pytest_cache/
 .mypy_cache/
 
+# Local notes (not for version control)
+TODO.md
+
 # OS junk
 .DS_Store
 
