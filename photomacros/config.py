@@ -8,11 +8,6 @@ This script:
 """
 
 from pathlib import Path
-from dotenv import load_dotenv
-
-
-# Load environment variables from a .env file, if it exists
-load_dotenv()
 
 # Paths
 PROJ_ROOT = Path(__file__).resolve().parents[1]
@@ -20,9 +15,7 @@ PROJ_ROOT = Path(__file__).resolve().parents[1]
 
 
 # Define data directories
-DATA_DIR = Path(
-    "~/Documents/GitHub/data"
-).expanduser()  # Path to the main data directory
+DATA_DIR = PROJ_ROOT / "data"  # In-repo data directory (CCDS layout)
 RAW_DATA_DIR = DATA_DIR / "raw"  # Directory for raw, unprocessed data
 INTERIM_DATA_DIR = DATA_DIR / "interim"  # Directory for interim data during processing
 PROCESSED_DATA_DIR = DATA_DIR / "processed"  # Directory for fully processed data

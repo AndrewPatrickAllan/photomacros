@@ -1,2 +1,41 @@
+# Python
+__pycache__/
+*.py[co]
+*.egg-info/
+.venv/
+sklearn-env/
 
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Local notes (not for version control)
+TODO.md
+
+# OS junk
 .DS_Store
+
+# Local installers
+Miniconda3-*.sh
+
+# Data — gitignore bulk contents, keep structure via .gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/external/*
+!data/external/.gitkeep
+!data/external/nutrition.csv
+
+# Derived prediction artefacts
+reports/y_pred.npy
+reports/y_true.npy
+
+# Trained model artefacts — large binaries, not for git
+models/*.pkl
+models/*.pt
+models/*.pth
+training.log
