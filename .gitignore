@@ -33,3 +33,9 @@ data/external/*
 # Derived prediction artefacts
 reports/y_pred.npy
 reports/y_true.npy
+
+# Trained model artefacts — large binaries, not for git
+models/*.pkl
+models/*.pt
+models/*.pth
+training.log
